@@ -59,6 +59,7 @@ status_messages = (
     "Audio Games",
     "Sound Games",
     "Rhythm Games",
+    "Non-Rhythm Games",
     "Eatmania",
     "Olive Garden",
     "Disco Duck",

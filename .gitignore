@@ -123,3 +123,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+# Please don't upload my bot's access token to github, kthx
+secret-token.txt
