@@ -31,6 +31,8 @@ Like addrole, but it uhh, removes roles. Category and Role must be in quotes, li
 
 After sending, react to the bot's confirmation message using ❌ to confirm removal.
 
+Note: If you remove the last role in a category, that category is automatically removed as well.
+
 ## !rolelist
 Sends the "role list" to whatever channel you run this command in.
 

@@ -133,6 +133,9 @@ def remove_role(category, role):
                 if role_element.hasAttribute("name") and role_element.getAttribute("name") == role:  # Found the role to delete, delete it!
                     category_element.removeChild(role_element)
                     print("Removed role", str(role), "from category", category)
+                    if not category_element.hasChildNodes():  # No other roles in this category, also remove the now-empty category
+                        config.removeChild(category_element)
+                        print("Removed now empty category " + category)
                     save_config()
                     return True
 
@@ -207,7 +210,7 @@ def set_admin_role(role_id):
     else:
         admin_role = admin_roles[0]
 
-    if admin_role.hasChildNodes:  # If there's old children nodes, remove them all
+    if admin_role.hasChildNodes():  # If there's old children nodes, remove them all
         for child in admin_role.childNodes:
             admin_role.removeChild(child)
     admin_role.appendChild(dom.createTextNode(role_id))
