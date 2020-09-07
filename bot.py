@@ -262,8 +262,8 @@ async def help(ctx):
                             "removerole \"Category\" \"Role\":  Removes a role from the role list\n" \
                             "rolelist:  Prints the role list to the current channel\n" \
                             "setadminrole \"Role\":  Sets a role as this bot's \"admin\" role\n" \
-                            "sortcategory \"Category\":  Sorts the roles in a category (alphabetical order)\n\n" \
-                            "setcategorydescription \"Category\" Description: Sets a category's description (optional)" \
+                            "sortcategory \"Category\":  Sorts the roles in a category (alphabetical order)\n" \
+                            "setcategorydescription \"Category\" Description: Sets a category's description (optional)\n\n" \
                             "Note:  If an admin role is set, you'll need that role to run ANY commands!"
         await ctx.author.send(embed=embed)
         await ctx.send(embed=format_embed("DM'd ya fam 😉", False))

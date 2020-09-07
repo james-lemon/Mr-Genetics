@@ -26,6 +26,9 @@ Limitations:
   - Don't forget, roles in the role list can be gained by ANY server member! Don't add your moderation roles to it!
 
 
+## !editrole "Category" "Role" Description
+Removes and re-adds an existing role entry with new values, like a shortcut to... manually removing and re-adding a role.
+
 ## !removerole "Category" "Role"
 Like addrole, but it uhh, removes roles. Category and Role must be in quotes, like with addrole.
 
