@@ -25,6 +25,7 @@ addrole_role = ""
 addrole_dispname = ""
 addrole_description = ""
 addrole_category = ""
+addrole_editing = False
 
 # Also track stuff for the removerole command
 removerole_message = [0, 0]
@@ -76,10 +77,10 @@ async def addrole(ctx, category, role: discord.Role, *, desc=""): # argument: di
 
         permissions = role.permissions
         if permissions.administrator:  # Prevent adding any admin roles for the guild
-            await ctx.send(embed=format_embed("Error: " + role.name + " is an admin role in this guild - You cannot add it to the role list!", True))
+            await ctx.send(embed=format_embed("Error: " + role.name + " is an admin role in this server - You cannot add it to the role list!", True))
             return
 
-        global addrole_message, addrole_role, addrole_description, addrole_category, addrole_dispname
+        global addrole_message, addrole_role, addrole_description, addrole_category, addrole_dispname, addrole_editing
         embed = discord.Embed(title="Will attempt to add a role", colour=0x4EDB23)
         msg_text = '\n**Role: **' + role.name
         msg_text += '\n**Category: **' + category
@@ -89,6 +90,7 @@ async def addrole(ctx, category, role: discord.Role, *, desc=""): # argument: di
         addrole_dispname = role.name
         addrole_category = category
         addrole_description = desc
+        addrole_editing = False
 
         # Finally, warn against adding roles with potentially "dangerous" permissions at the bottom of the message
         if permissions.kick_members or permissions.ban_members or permissions.manage_channels or permissions.manage_guild or permissions.manage_messages or permissions.mute_members or permissions.deafen_members:
@@ -99,6 +101,39 @@ async def addrole(ctx, category, role: discord.Role, *, desc=""): # argument: di
         addrole_message[0] = msg.channel.id
         addrole_message[1] = msg.id
         print("Sent addrole message: ", msg.id)
+        return
+
+
+# Edits a role in the config
+@bot.command()
+async def editrole(ctx, category, role: discord.Role, *, desc=""): # argument: discord.XYZ converts this argument to this data type (i.e. turn a string into a role)
+    if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and authorize_admin(ctx.guild, ctx.author):  # First: Confirm that it's a member (of a guild) we're being given, and then authorize them as an admin
+        roles = config_man.get_roles(category)  # First, let's do some sanity checks:
+        if roles is False:  # Confirm that our role list is valid (if it's false, the category is invalid)
+            await ctx.send(embed=format_embed("Error getting roles for category \"" + category + "\" - does this category exist?", True))
+            return
+
+        if str(role.id) not in roles.keys():  # If our role list is correct, make sure the role we want to edit is valid, too
+            await ctx.send(embed=format_embed("Error: Role \"" + role.name + "\" not found in category \"" + category + "\"!", True))
+            return
+
+        global addrole_message, addrole_role, addrole_description, addrole_category, addrole_dispname, addrole_editing
+        embed = discord.Embed(title="Will attempt to edit a role", colour=0x4EDB23)
+        msg_text = '\n**Role: **' + role.name
+        msg_text += '\n**Category: **' + category
+        msg_text += '\n**Description: **' + desc
+        msg_text += '\n\nRole will be removed and re-added with these values. To confirm: React to this message with the emote to listen for!'
+        addrole_role = str(role.id)
+        addrole_dispname = role.name
+        addrole_category = category
+        addrole_description = desc
+        addrole_editing = True
+
+        embed.description = msg_text
+        msg = await ctx.send(embed=embed)
+        addrole_message[0] = msg.channel.id
+        addrole_message[1] = msg.id
+        print("Sent editrole message: ", msg.id)
         return
 
 
@@ -149,10 +184,11 @@ async def rolelist(ctx):  # Sends the "role list" messages, which can be reacted
                     print("Received 404 trying to delete message with ID " + str(message[1]) + ", was it already deleted?")
             rolelist_messages.clear()
 
+            categorydescriptions = config_man.get_category_descriptions()
             for category, ids in config_man.categories.items():  # Send a rolelist message for each category
                 embed = discord.Embed(title=category, colour=0xFF7D00)  # Create an embed, set it's title and color
-                # msg_text = "> **" + category + "**\nReact with the following emotes to get roles!\n"
-                msg_text = "React with these emotes to get roles!\n"
+                msg_text = categorydescriptions[category] if categorydescriptions[category] is not None else "React with these emotes to get roles!"  # Grab this category's description from the config (if there is one), otherwise use some placeholder text
+                msg_text += "\n"
                 emojis = config_man.get_roles_emoji(category)
                 for role_id, desc in config_man.get_roles(category).items():  # Grab the roles from this category, and add their name/descriptions to the message to send
                     role = get(ctx.guild.roles, id=int(role_id))
@@ -207,6 +243,14 @@ async def sortcategory(ctx, category):
         await ctx.send(embed=format_embed(msg, False))
 
 
+# Sets the description of a category
+@bot.command()
+async def setcategorydescription(ctx, category, *, description=""):
+    if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and authorize_admin(ctx.guild, ctx.author):  # First: Authorize an admin is running this command
+        msg = config_man.set_category_description(category, description)
+        await ctx.send(embed=format_embed(msg, False))
+
+
 # A help command that DMs the sender with command info
 @bot.command()
 async def help(ctx):
@@ -214,10 +258,12 @@ async def help(ctx):
         embed = discord.Embed(title="Command Help", colour=0xFF7D00)  # Create an embed, set it's title and color
         embed.description = "help: Get sent this list\n" \
                             "addrole \"Category\" \"Role\" Description:  Adds a role to the role list\n" \
+                            "editrole \"Category\" \"Role\" Description:  Removes and re-adds a role to the role list\n" \
                             "removerole \"Category\" \"Role\":  Removes a role from the role list\n" \
                             "rolelist:  Prints the role list to the current channel\n" \
                             "setadminrole \"Role\":  Sets a role as this bot's \"admin\" role\n" \
                             "sortcategory \"Category\":  Sorts the roles in a category (alphabetical order)\n\n" \
+                            "setcategorydescription \"Category\" Description: Sets a category's description (optional)" \
                             "Note:  If an admin role is set, you'll need that role to run ANY commands!"
         await ctx.author.send(embed=embed)
         await ctx.send(embed=format_embed("DM'd ya fam 😉", False))
@@ -269,13 +315,20 @@ async def handle_reaction(payload):
     if authorize_admin(guild, member):
         if payload.channel_id == addrole_message[0] and payload.message_id == addrole_message[1]:  # Check for reactions on the latest "addrole" message
             debug_emoji = payload.emoji
-            print("\nAddrole reaction!\nID: ", payload.message_id, "Emoji: ", payload.emoji.name)
+            print("\nAdd/edit role reaction!\nID: ", payload.message_id, "Emoji: ", payload.emoji.name)
 
             if payload.emoji.is_custom_emoji():  # Using a custom emoji? Make sure the bot can actually use it, too
                 emoji = get(guild.emojis, id=payload.emoji.id)
                 print(emoji)
                 if emoji is None or emoji.available is False:
                     await bot.get_channel(payload.channel_id).send(embed=format_embed("Error: I can't use that custom emoji, try reacting with a different emote!", True))
+                    return
+
+            if addrole_editing:  # If we're editing a role, we want to remove the existing role before we add a new one with the new parameters
+                remove_result = config_man.remove_role(addrole_category, addrole_role)
+                if remove_result is False:
+                    await bot.get_channel(payload.channel_id).send(embed=format_embed("Role edit macro failed!\n" + remove_result, True))
+                    addrole_message = [0, 0]
                     return
 
             add_result = config_man.add_role(addrole_category, addrole_role, addrole_dispname, payload.emoji.name, addrole_description, payload.emoji.is_custom_emoji())

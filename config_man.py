@@ -9,7 +9,7 @@ import codecs
 # The config is organized like this:
 # <config>
 #   <admin_role>admin role id</admin_role>
-#   <category name="Category name", listeningChannel="channel ID", listeningMessage="message ID">
+#   <category name="Category name", listeningChannel="channel ID", listeningMessage="message ID", description="optional description">
 #       <role name="Role id" dispName="Role display name" emoji="Unicode emoji/Custom emoji name" usesCustomEmoji="true/false">Role Description</role>
 #       <role>...
 #   </category>
@@ -40,19 +40,25 @@ def get_categories():
             else:  # Otherwise, set the channel/message fields to -1
                 print("Category", category.getAttribute("name"), "doesn't have listeningMessage/Channel attributes (and thus can't track a message for reactions to assign these roles!)\nRun the role list command to generate a role list message to fix this!")
                 ret[category.getAttribute("name")] = "-1;-1"
-#            roles = ""
-#            for role in category.getElementsByTagName("role"):
-#                if role.hasAttribute("name"):
-#                    roles += role.getAttribute("name") + ","
-#                else:
-#                    print("Config warning: Role in category ", category.getAttribute("name"), " has no name!")
-#
-#            if len(roles) > 1:  # Found at least one role, strip off the trailing comma
-#                roles = roles[0:-1]
-#            ret[category.getAttribute("name")] = roles
         else:
             print("Config warning: Category in config is missing a name and won't be loaded!")
     categories = ret
+
+
+# Returns a dict with all of the categories in the config and their descriptions (or some placeholder text, if they don't have one)
+def get_category_descriptions():
+    global categories
+    ret = {}
+
+    configCategories = config.getElementsByTagName("category")  # First iterate through all the categories in the file...
+    for category in configCategories:
+        if category.hasAttribute("name"):  # Check if this category has a name
+            if category.hasAttribute("description"):  # Now check if it has a description
+                desc = category.getAttribute("description")  # Categories with blank descriptions should use placeholder text, otherwise just return the description
+                ret[category.getAttribute("name")] = desc if desc is not "" else "React with these emotes to get roles!"
+            else:  # No description attribute in the config? Also use some placeholder text
+                ret[category.getAttribute("name")] = "React with these emotes to get roles!"
+    return ret
 
 
 # Returns a dict of all roles in a category and their descriptions
@@ -170,11 +176,23 @@ def set_category_message(category, channel_id, message_id):
     # Note: Config saving isn't done here, but instead in the rolelist command handler (since we're probably gonna be updating multiple config entries at once)
 
 
-def sort_category(category):
-    if category not in categories:  # The specified category doesn't exist
-        print("Failed to sort category: Category \"", category, "\"doesn't exist!")
-        return "Failed to sort category: Category \"", category, "\"doesn't exist!"
+# Sets the description of a category
+def set_category_description(category, description):
+    global categories
+    if category in categories:
+        for configCategory in config.getElementsByTagName("category"):
+            if configCategory.hasAttribute("name") and configCategory.getAttribute("name") == category:
+                configCategory.setAttribute("description", description)
+                print("Set description of category \"" + category + "\" to \"" + description + "\"")
+                return "Set description of category \"" + category + "\" to \"" + description + "\""
+    else:
+        print("Failed to set category description: Category \"", category, "\"doesn't exist!")
+        return "Failed to set category description: Category \"", category, "\"doesn't exist!"
 
+    save_config()
+
+
+def sort_category(category):
     if category in categories:  # Find this category in the config
         for configCategory in config.getElementsByTagName("category"):
             if configCategory.hasAttribute("name") and configCategory.getAttribute("name") == category:  # Now sort the roles from the category: Janky-style because documentation wasn't easy to find!
@@ -187,6 +205,9 @@ def sort_category(category):
                     configCategory.appendChild(role)
                 save_config()
         return "Sorted category \"" + category + "\" by alphabetical order"
+    else:
+        print("Failed to sort category: Category \"", category, "\"doesn't exist!")
+        return "Failed to sort category: Category \"", category, "\"doesn't exist!"
 
 
 # Returns text inside the first "admin_role" element

@@ -52,6 +52,10 @@ Sorts the roles in "Category" by alphabetical order - Perfect for organizing you
 
 (By default, roles are displayed on the role list in the order you added them in)
 
+## !setcategorydescription "Category" Description
+Sets a category's description. Note that the category's name is in quotes, and the description isn't.
+
+This field is optional, and placeholder text is used if this isn't set (or is set to a blank value)
 
 ### Other notes
  - This bot doesn't ship with a bot access token (obviously), place yours in `secret-token.txt` in the same folder as `bot.py`!
