@@ -22,11 +22,11 @@ status_messages = (
     "Groove Coaster",
     "Taiko no Tatsujin",
     "jubeat",
-    "Pop'n Music"
+    "Pop'n Music",
     "Para Para Paradise",
     "Dance Evolution ARCADE",
     "Etterna",
-    "Theatrhythm"
+    "Theatrhythm",
     "DJMax",
     "Beat Saber",
     "Guitar Hero",
