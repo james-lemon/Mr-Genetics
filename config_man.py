@@ -10,13 +10,13 @@ import codecs
 # <config>
 #   <admin_role>admin role id</admin_role>
 #   <category name="Category name", listeningChannel="channel ID", listeningMessage="message ID", description="optional description">
-#       <role name="Role id" dispName="Role display name" emoji="Unicode emoji/Custom emoji name" usesCustomEmoji="true/false">Role Description</role>
+#       <role name="Role id" dispName="Role display name" emoji="Unicode emoji/Custom emoji name" usesCustomEmoji="True/False", assignable="True/False">Role Description</role>
 #       <role>...
 #   </category>
 #   <category>...
 # </config>
 
-
+print("Initializing config_man...")
 
 
 def save_config():
@@ -86,7 +86,7 @@ def get_roles_emoji(category):
             if configCategory.hasAttribute("name") and configCategory.getAttribute("name") == category:  # Found the category element, now grab the roles from it
 
                 for configRole in configCategory.getElementsByTagName("role"):
-                    if configRole.hasAttribute("name") and configRole.hasAttribute("emoji") and configRole.hasAttribute("usesCustomEmoji"):
+                    if configRole.hasAttribute("name") and configRole.hasAttribute("emoji") and configRole.hasAttribute("usesCustomEmoji") and configRole.hasAttribute("assignable") and configRole.getAttribute("assignable") == "True":  # Only add roles with a name, emoji and assignable="True" set
                         ret[configRole.getAttribute("name")] = [configRole.getAttribute("emoji"), configRole.getAttribute("usesCustomEmoji")]  # Grab this role from the config and its emoji (if it has both attributes), then add it to the dict to return
         return ret
 
@@ -95,16 +95,31 @@ def get_roles_emoji(category):
         return False
 
 
+# Returns whether a role can be assigned via reactions
+def is_role_assignable(category, role):
+    global categories
+    if category in categories:  # If the category we're requesting is in our valid categories list, find that category in the config
+        for configCategory in config.getElementsByTagName("category"):
+            if configCategory.hasAttribute("name") and configCategory.getAttribute("name") == category:  # Found the category element, now grab the roles from it
+
+                for configRole in configCategory.getElementsByTagName("role"):
+                    if configRole.hasAttribute("name") and configRole.getAttribute("name") == str(role):  # Found le role
+                        return configRole.hasAttribute("assignable") and configRole.getAttribute("assignable") == "True"  # Return whether this role both has the "assignable" attribute and if that attribute is true
+
+    else:
+        print("Error: Attempt to get role from non-existent category \"", category, "\"")
+        return False
+
+
 # Adds a role (and category, if the specified one doesn't exist) to the config
-def add_role(category, role, dispName, emoji, description, isCustomEmoji):
-    ret = ""
+def add_role(category, role, dispName, emoji, description, isCustomEmoji, assignable):
     if category not in categories:  # Check if the specified category doesn't exist
         if add_category(category) is False:  # Try adding it! If that fails, the program is mega derped and we should return
             print("Failed to add role", role, ": Category \"", category, "\"doesn't exist and was unable to be added.\n\nThis probably shouldn't happen.")
             return "Failed to add role: Category \"", category, "\"doesn't exist and was unable to be added.\n\nThis probably shouldn't happen."
 
     for emote in get_roles_emoji(category).values():
-        if emote[0] == emoji:
+        if emote[0] == emoji and assignable:
             print("Failed to add role: Emote " + emoji + " is already used for another role in this category!")
             return "Failed to add role: Emoji " + emoji + " is already used for another role in this category!"
 
@@ -114,8 +129,9 @@ def add_role(category, role, dispName, emoji, description, isCustomEmoji):
             config_role = dom.createElement("role")  # Create the role element (<role>)
             config_role.setAttribute("name", role)
             config_role.setAttribute("dispName", dispName)
-            config_role.setAttribute("emoji", emoji)
+            config_role.setAttribute("emoji", emoji if assignable else "")
             config_role.setAttribute("usesCustomEmoji", str(isCustomEmoji))
+            config_role.setAttribute("assignable", str(assignable))
             config_role.appendChild(dom.createTextNode(description))  # Finally, set the text for it (the description)
             category_element.appendChild(config_role)  # Then add it to the category (should at this point be <role name="role name", emoji="emoji name">description</role>
             save_config()
@@ -192,6 +208,7 @@ def set_category_description(category, description):
     save_config()
 
 
+# Sorts roles in a category by alphabetical order
 def sort_category(category):
     if category in categories:  # Find this category in the config
         for configCategory in config.getElementsByTagName("category"):
@@ -252,22 +269,8 @@ config = dom.documentElement
 categories = None  # Don't forget to initialize the category list, too!
 get_categories()
 
-#add_role("lamno", "R", "🤔", "Your mom is a kind soul")  # Addrole test
 
-# Creates <category name="butts"><role>Your mom</role></category>
-#category = dom.createElement("category")
-#category.setAttribute("name", "butts")
-#role = dom.createElement("role")
-#role.appendChild(dom.createTextNode("Your mom"))
-#category.appendChild(role)
-#config.appendChild(category)
-
-#category = dom.createElement("category")
-#category.setAttribute("name", "bruhv")
-#category.appendChild(dom.createElement("role"))
-#config.appendChild(category)
-
-
+print("Loaded categories:")
 for category in categories.keys():
     print(category, ":", categories[category])
 

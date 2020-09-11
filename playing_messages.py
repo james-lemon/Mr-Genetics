@@ -44,6 +44,7 @@ status_messages = (
     "Hangly-Man",
     "Magical Truck Adventure",
     "NotITG",
+    "Dance Factory",
 
     " ",
     "Simply Spud",
