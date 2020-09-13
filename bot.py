@@ -229,6 +229,10 @@ async def rolelist(ctx):  # Sends the "role list" messages, which can be reacted
                     print("Received 404 trying to delete message with ID " + str(message[1]) + ", was it already deleted?")
             rolelist_messages.clear()
 
+            if not config_man.categories:  # Are no categories loaded?
+                await ctx.send(embed=format_embed("No role categories to display found! Add some roles to the rolelist with !addrole.", True))
+                return
+
             categorydescriptions = config_man.get_category_descriptions()
             for category, ids in config_man.categories.items():  # Send a rolelist message for each category
                 embed = discord.Embed(title=category, colour=0xFF7D00)  # Create an embed, set it's title and color
@@ -305,15 +309,15 @@ async def setcategorydescription(ctx, category, *, description=""):
 async def help(ctx):
     if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and authorize_admin(ctx.guild, ctx.author):  # First: Authorize an admin is running this command
         embed = discord.Embed(title="Command Help", colour=0xFF7D00)  # Create an embed, set it's title and color
-        embed.description = "help: Get sent this list\n" \
-                            "addrole \"Category\" \"Role\" Description:  Adds an assignable role to the role list\n" \
-                            "adddisprole \"Category\" \"Role\" Description:  Adds a non-assignable role to the role list\n" \
-                            "editrole \"Category\" \"Role\" Description:  Removes and re-adds a role to the role list\n" \
-                            "removerole \"Category\" \"Role\":  Removes a role from the role list\n" \
-                            "rolelist:  Prints the role list to the current channel\n" \
-                            "setadminrole \"Role\":  Sets a role as this bot's \"admin\" role\n" \
-                            "sortcategory \"Category\":  Sorts the roles in a category (alphabetical order)\n" \
-                            "setcategorydescription \"Category\" Description: Sets a category's description (optional)\n\n" \
+        embed.description = "\n`help:` Get sent this list\n\n" \
+                            "`addrole \"Category\" \"Role\" Description:`  Adds an assignable role to the role list\n\n" \
+                            "`adddisprole \"Category\" \"Role\" Description:`  Adds a non-assignable role to the role list\n\n" \
+                            "`editrole \"Category\" \"Role\" Description:`  Removes and re-adds a role to the role list\n\n" \
+                            "`removerole \"Category\" \"Role\":`  Removes a role from the role list\n\n" \
+                            "`rolelist:`  Prints the role list to the current channel\n\n" \
+                            "`setadminrole \"Role\":`  Sets a role as this bot's \"admin\" role\n\n" \
+                            "`sortcategory \"Category\":`  Sorts the roles in a category (alphabetical order)\n\n" \
+                            "`setcategorydescription \"Category\" Description:` Sets a category's description (optional)\n\n" \
                             "Note:  If an admin role is set, you'll need that role to run ANY commands!"
         await ctx.author.send(embed=embed)
         await ctx.send(embed=format_embed("DM'd ya fam 😉", False))
@@ -449,6 +453,7 @@ def authorize_admin(guild, member):
 # Returns a discord.Embed for use in sending status messages
 def format_embed(text, is_error):
     return discord.Embed(title=text, colour=0xDB2323 if is_error else 0xFF7D00)
+
 
 # Change the "playing" message every 6 hours (4 changes a day)
 async def change_status():

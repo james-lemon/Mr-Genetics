@@ -3,15 +3,15 @@
 
  It also allows for discord server members to self-assign roles you configure by reacting to a message the bot sends... how neat is that?
 
-# Command Usage:
+## Command Usage:
 
 **Note: Running any command requires you have the "admin" role! See !setadminrole for details**
 
-## !help
+### !help
 DMs you a brief list of commands and how to use them
 
 
-## !addrole "Category" "Role" Description
+### !addrole "Category" "Role" Description
 Adds a role to the role list config that can be obtained by ANYONE!
 
 Users can react using this role's emote (set after running the command) to get that role - **DO NOT add roles using !addrole with permissions you don't want normal users to have!**
@@ -29,7 +29,7 @@ Limitations:
   - Don't forget, roles in the role list can be gained by ANY server member! Don't add your moderation roles to it!
 
 
-## !adddisprole "Category" "Role" Description
+### !adddisprole "Category" "Role" Description
 Adds a display role - These roles show up in the role list (like with addrole), but CANNOT BE OBTAINED using reactions!
 
 Useful if you want your admin roles displayed in the role list, but don't want users to be able to get free admin by adding a reaction :P
@@ -37,11 +37,11 @@ Useful if you want your admin roles displayed in the role list, but don't want u
 Limitations are the same as with !addrole, with the exception that server and bot admin roles can be used.
 
 
-## !editrole "Category" "Role" Description
+### !editrole "Category" "Role" Description
 Removes and re-adds an existing role entry with new values, like a shortcut to... manually removing and re-adding a role.
 
 
-## !removerole "Category" "Role"
+### !removerole "Category" "Role"
 Like addrole, but it uhh, removes roles. Category and Role must be in quotes, like with addrole.
 
 After sending, react to the bot's confirmation message using ❌ to confirm removal.
@@ -49,7 +49,7 @@ After sending, react to the bot's confirmation message using ❌ to confirm remo
 Note: If you remove the last role in a category, that category is automatically removed as well.
 
 
-## !rolelist
+### !rolelist
 Sends the "role list" to whatever channel you run this command in.
 
   - Each category is printed as a message, react with a role's emote to get that role!
@@ -57,7 +57,7 @@ Sends the "role list" to whatever channel you run this command in.
   - Sending messages/reactions using !rolelist is intentionally slowed to appease the Discord API's rate limits
 
 
-## !setadminrole "Role"
+### !setadminrole "Role"
 Sets the "admin" role for this bot to the specified role.
 
   - If this is set, users without this role can't run ANY bot commands and can only gain roles from reactions.
@@ -65,13 +65,13 @@ Sets the "admin" role for this bot to the specified role.
   - The bot will send a confirmation message - *Make sure you have this admin role* and confirm by reacting to it with 🔒.
 
 
-## !sortcategory "Category"
+### !sortcategory "Category"
 Sorts the roles in "Category" by alphabetical order - Perfect for organizing your last-minute role additions!
 
 (By default, roles are displayed on the role list in the order you added them in)
 
 
-## !setcategorydescription "Category" Description
+### !setcategorydescription "Category" Description
 Sets a category's description. Note that the category's name is in quotes, and the description isn't.
 
 This field is optional, and placeholder text is used if this isn't set (or is set to a blank value)

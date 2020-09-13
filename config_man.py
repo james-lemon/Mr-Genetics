@@ -151,11 +151,11 @@ def remove_role(category, role):
     for category_element in config.getElementsByTagName("category"):  # Now go and add this role to the category
         category_name = category_element.getAttribute("name")
         if category_name is not None and category_name == category:
-            for role_element in  category_element.getElementsByTagName("role"):
+            for role_element in category_element.getElementsByTagName("role"):
                 if role_element.hasAttribute("name") and role_element.getAttribute("name") == role:  # Found the role to delete, delete it!
                     category_element.removeChild(role_element)
                     print("Removed role", str(role), "from category", category)
-                    if not category_element.hasChildNodes():  # No other roles in this category, also remove the now-empty category
+                    if len(category_element.getElementsByTagName("role")) < 1:  # No other roles in this category, also remove the now-empty category
                         config.removeChild(category_element)
                         print("Removed now empty category " + category)
                     save_config()
