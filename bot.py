@@ -361,9 +361,11 @@ async def handle_reaction(payload):
                                 if role in member.roles:  # Member already has this role, take it away!
                                     print("Removing role " + role.name + " from member " + member.display_name)
                                     await member.remove_roles(role, reason="Self-removed via bot (by reaction)")
+                                    print("Removed role")
                                 else:  # Member doesn't have the role, add it!
                                     print("Adding role " + role.name + " to member " + member.display_name)
                                     await member.add_roles(role, reason="Self-assigned via bot (by reaction)")
+                                    print("Added role ")
                                 return  # Done adding this role, don't process anything else
 
     # Reaction processing 2: Add/remove role reactions - Only available to admins!
