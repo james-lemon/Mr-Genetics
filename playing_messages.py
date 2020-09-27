@@ -32,7 +32,7 @@ status_messages = (
     "Just Dance",
     "Rhythm Heaven",
     "Michael Jackson: The Experience",
-    "MaiMai",
+    "maimai",
     "Geometry Dash",
     "Rockband",
     "Rhythm Doctor",
@@ -42,6 +42,7 @@ status_messages = (
     "Magical Truck Adventure",
     "NotITG",
     "Simply Spud",
+    "Elite Beat Agents",
     
     "Quick & Crash",
     "Roblox",
@@ -108,6 +109,14 @@ status_messages = (
     "Raw Thrills",
     "the extra stage",
     "Max 400",
+    "Max 500",
+    "with Hidden+",
+    "with Sudden+",
+    "with Stealth",
+    "games",
+    "with pudding",
+    "with cats on cabs",
+    "with cats, on cabs",
     )
 
 

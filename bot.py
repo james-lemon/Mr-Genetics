@@ -304,6 +304,13 @@ async def setcategorydescription(ctx, category, *, description=""):
         await ctx.send(embed=format_embed(msg, False))
 
 
+# Sends an introduction message, da-don!
+@bot.command()
+async def introduction(ctx):
+    if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and authorize_admin(ctx.guild, ctx.author):  # First: Authorize an admin is running this command
+        await ctx.send("*Musical quack*, da-don 🦆")
+
+
 # A help command that DMs the sender with command info
 @bot.command()
 async def help(ctx):
