@@ -50,12 +50,17 @@ Note: If you remove the last role in a category, that category is automatically 
 
 
 ### !rolelist
-Sends the "role list" to whatever channel you run this command in.
+Sends/updates the "role list" to whatever channel you run this command in.
 
   - Each category is printed as a message, react with a role's emote to get that role!
-  - This bot self-deletes any old role list messages, to prevent user confusion
+  - If a category's message already exists, that message is edited with the current roles/reactions for that category
+  - If a category's message doesn't exist, a new one is sent in the channel you run this command in
   - Sending messages/reactions using !rolelist is intentionally slowed to appease the Discord API's rate limits
 
+
+### !newrolelist
+Deletes the old role list messages and sends new ones to whatever channel you run this command in.
+  
 
 ### !setadminrole "Role"
 Sets the "admin" role for this bot to the specified role.

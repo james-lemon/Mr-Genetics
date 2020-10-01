@@ -156,8 +156,17 @@ def remove_role(category, role):
                     category_element.removeChild(role_element)
                     print("Removed role", str(role), "from category", category)
                     if len(category_element.getElementsByTagName("role")) < 1:  # No other roles in this category, also remove the now-empty category
+                        ret = [-1, -1]
+                        if category_element.hasAttribute("listeningChannel") and category_element.hasAttribute("listeningMessage"):  # Did this category get assigned a rolelist message?
+                            ret[0] = int(category_element.getAttribute("listeningChannel"))
+                            ret[1] = int(category_element.getAttribute("listeningMessage"))
+                        else:  # No message, set the message id to return to -1
+                            ret[0] = -1
+                            ret[1] = -1
                         config.removeChild(category_element)
                         print("Removed now empty category " + category)
+                        save_config()
+                        return ret
                     save_config()
                     return True
 

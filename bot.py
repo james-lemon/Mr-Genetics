@@ -8,8 +8,10 @@ from discord.utils import get
 import config_man
 import playing_messages
 
-# client = discord.Client()
-bot = commands.Bot(command_prefix='!', case_insensitive=True)
+
+intents = discord.Intents(guilds=True, members=True, emojis=True, messages=True, guild_reactions=True)  # Set our intents - Subscribes to certain types of events from discord
+
+bot = commands.Bot(command_prefix='!', case_insensitive=True, intents=intents)
 
 bot.remove_command('help')  # Remove the default help command, imma make my own lel
 
@@ -197,7 +199,7 @@ async def removerole(ctx, category, role: discord.Role):
         msg_text = '\n**Category:** ' + category
         msg_text += '\n**Role: **' + role.name
         if len(role_list) <= 1:  # If this is the only role in the category, the category will be removed as well
-            msg_text += '\n**This category will be empty (and thus removed) if this role is removed.**'
+            msg_text += '\n**This category will be empty (and thus removed) if this role is removed. It\'s rolelist message will be deleted if it exists, too.**'
         msg_text += '\n\nTo confirm removal: React with ❌'
         removerole_category = category
         removerole_role = str(role.id)
@@ -212,26 +214,38 @@ async def removerole(ctx, category, role: discord.Role):
 
 
 
-# Sends the "role list" messages - Users can react to these messages for roles assignments
+# Updates the "role list" messages if they exist - Users can react to these messages for roles assignments
 # Usage: rolelist
 @bot.command()
-async def rolelist(ctx):  # Sends the "role list" messages, which can be reacted to for role assignments
+async def rolelist(ctx):
+    await generateRoleList(ctx, False)
+
+
+# Sends new "role list" messages, deleting old ones in the process
+@bot.command()
+async def newrolelist(ctx):
+    await generateRoleList(ctx, True)
+
+# Generates a role list, either deleting the old messages and sending new ones or updating the existing messages
+async def generateRoleList(ctx, sendNew):
     if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and authorize_admin(ctx.guild, ctx.author):  # First: Confirm that it's a member (of a guild) we're being given, and then authorize them as an admin
+            if not config_man.categories:  # Are no categories loaded?
+                await ctx.send(embed=format_embed("No role categories to display found! Add some roles to the rolelist with !addrole or !adddisprole.", True))
+                return
+
             global rolelist_messages
 
-            # First, delete all the old rolelist messages we're tracking (if any) and clear the list of messages to track
-            for message in rolelist_messages.keys():
-                # print(message)
-                try:
-                    msg = await bot.get_channel(message[0]).fetch_message(message[1])
-                    await msg.delete()
-                except discord.errors.NotFound:
-                    print("Received 404 trying to delete message with ID " + str(message[1]) + ", was it already deleted?")
-            rolelist_messages.clear()
+            if sendNew:  # Generating a new role list? Delete the old messages we're tracking first
+                # First, delete all the old rolelist messages we're tracking (if any) and clear the list of messages to track
+                for message in rolelist_messages.keys():
+                    # print(message)
+                    try:
+                        msg = await bot.get_channel(message[0]).fetch_message(message[1])
+                        await msg.delete()
+                    except discord.errors.NotFound:
+                        print("Received 404 trying to delete message with ID " + str(message[1]) + ", was it already deleted?")
+                rolelist_messages.clear()
 
-            if not config_man.categories:  # Are no categories loaded?
-                await ctx.send(embed=format_embed("No role categories to display found! Add some roles to the rolelist with !addrole.", True))
-                return
 
             categorydescriptions = config_man.get_category_descriptions()
             for category, ids in config_man.categories.items():  # Send a rolelist message for each category
@@ -248,16 +262,57 @@ async def rolelist(ctx):  # Sends the "role list" messages, which can be reacted
                             msg_text += str(get(ctx.guild.emojis, name=emojis[role_id][0]))
                         else:  # Unicode emoji - Print emoji normally (since it's just stored as a unicode string)
                             msg_text += emojis[role_id][0]
-                    msg_text += "  **" + role.name + "** - " + desc
+                    
+                    if desc == '':
+                        msg_text += "  **" + role.name + "**"
+                    else:
+                        msg_text += "  **" + role.name + "** - " + desc
 
                 embed.description = msg_text  # Set the embed's description to our role list text
-                msg = await ctx.send(embed=embed)
-                print("Sent role list message: ", msg.id)
+
+                msg = None
+                updated_msg = False
+                if not sendNew:  # Hol up, if we want to update the existing lists, check if this category already has a message
+                    id_list = ids.split(';')
+                    if id_list[0] != '-1' and id_list[1] != '-1':  # There's *probably* a valid message to update?
+                        msg = await bot.get_channel(int(id_list[0])).fetch_message(int(id_list[1]))
+                        await msg.edit(embed=embed)
+                        print("Edited existing role list message for \"" + category + "\": ", msg.id)
+                        updated_msg = True
+
+                if not updated_msg:  # Wasn't able to edit an existing category message? That's cool just send a new one
+                    msg = await ctx.send(embed=embed)
+                    print("Sent role new list message for \"" + category + "\": ", msg.id)
+
                 rolelist_messages[(msg.channel.id, msg.id)] = category  # Store this message's channel/message IDs for later - We'll use them to track these messages for reactions
                 config_man.set_category_message(category, str(msg.channel.id), str(msg.id))  # Also save these values to the config as well
 
+                cur_emoji_list = []
+                if updated_msg:  # If we're updated an existing message, check if we should remove any (of our) reactions for roles that no longer exist:
+                    new_emoji_list = []
+
+                    for item in emojis.values():  # First, grab a list of all the emojis associated with roles in this category
+                        new_emoji_list.append(item[0])
+
+                    for reaction in msg.reactions:  # Now go through all of this message's reactions
+                        if isinstance(reaction.emoji, discord.Emoji) or isinstance(reaction.emoji, discord.PartialEmoji):
+                            emote = reaction.emoji.name
+                        else:  # We're probably being given a unicode string as an emoji???
+                            emote = reaction.emoji
+
+                        if reaction.me:
+                            if emote not in new_emoji_list:  # If we've used this reaction and that reaction no longer belongs to a role, remove our reaction to it!
+                                await reaction.remove(bot.user)
+                                await asyncio.sleep(0.5)
+                            else:  # We've used this reaction and it does belong to a role, add it to the list of reactions we currently have
+                                cur_emoji_list.append(emote)
+
                 for role, emoji in emojis.items():  # React with the emotes for all assignable roles in this category
-                    if config_man.is_role_assignable(category, role):
+
+                    # Add this emote as a reaction if this role is assignable AND EITHER:
+                    #    - We're sending a new role list OR
+                    #    - We're updating a role list and we haven't reacted with this emote yet (it isn't in cur_emoji)list)
+                    if config_man.is_role_assignable(category, role) and (not updated_msg or (updated_msg and emoji[0] not in cur_emoji_list)):
                         await asyncio.sleep(0.5)  # Wait a bit to appease rate limits (discordpy apparently does some stuff internally too, this prolly can't hurt tho
                         if emoji[1] == 'True':  # This is a custom emoji, grab an emoji instance before use
                             await msg.add_reaction(get(ctx.guild.emojis, name=emoji[0]))
@@ -321,7 +376,8 @@ async def help(ctx):
                             "`adddisprole \"Category\" \"Role\" Description:`  Adds a non-assignable role to the role list\n\n" \
                             "`editrole \"Category\" \"Role\" Description:`  Removes and re-adds a role to the role list\n\n" \
                             "`removerole \"Category\" \"Role\":`  Removes a role from the role list\n\n" \
-                            "`rolelist:`  Prints the role list to the current channel\n\n" \
+                            "`rolelist:`  Sends/updates the role list messages to the current channel\n\n" \
+                            "`newrolelist:`  Deletes the old role list and sends a new one to the current channel\n\n" \
                             "`setadminrole \"Role\":`  Sets a role as this bot's \"admin\" role\n\n" \
                             "`sortcategory \"Category\":`  Sorts the roles in a category (alphabetical order)\n\n" \
                             "`setcategorydescription \"Category\" Description:` Sets a category's description (optional)\n\n" \
@@ -368,11 +424,11 @@ async def handle_reaction(payload):
                                 if role in member.roles:  # Member already has this role, take it away!
                                     print("Removing role " + role.name + " from member " + member.display_name)
                                     await member.remove_roles(role, reason="Self-removed via bot (by reaction)")
-                                    print("Removed role")
+                                    # print("Removed role")
                                 else:  # Member doesn't have the role, add it!
                                     print("Adding role " + role.name + " to member " + member.display_name)
                                     await member.add_roles(role, reason="Self-assigned via bot (by reaction)")
-                                    print("Added role ")
+                                    # print("Added role ")
                                 return  # Done adding this role, don't process anything else
 
     # Reaction processing 2: Add/remove role reactions - Only available to admins!
@@ -408,9 +464,15 @@ async def handle_reaction(payload):
 
         if payload.channel_id == removerole_message[0] and payload.message_id == removerole_message[1] and payload.emoji.name == '❌':  # Check for reactions on the latest "removerole" message
             remove_result = config_man.remove_role(removerole_category, removerole_role)
-            if remove_result is True:
+            if remove_result is True or isinstance(remove_result, list):
                 msg = await bot.get_channel(payload.channel_id).fetch_message(payload.message_id)
                 await msg.add_reaction('\N{THUMBS UP SIGN}')
+
+                if isinstance(remove_result, list) and remove_result[0] != -1:  # If we got returned a list, it means this category is now empty. If list[0] isn't -1, it means we should delete the old rolelist message for that category, too
+                    msg = await bot.get_channel(remove_result[0]).fetch_message(remove_result[1])
+                    await msg.delete()
+                    await bot.get_channel(payload.channel_id).send(embed=format_embed("This category is now empty! Removed category and deleted its role list message", False))
+
             else:
                 await bot.get_channel(payload.channel_id).send(embed=format_embed(remove_result, True))
             removerole_message = [0, 0]  # Don't forget to blank out the removerole message so we stop listening for reactions on the message we just reacted on!

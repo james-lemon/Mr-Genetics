@@ -43,6 +43,8 @@ status_messages = (
     "NotITG",
     "Simply Spud",
     "Elite Beat Agents",
+    "Muse Dash",
+    "Vib-Ribbon",
     
     "Quick & Crash",
     "Roblox",
@@ -89,7 +91,9 @@ status_messages = (
     "Rhythm Mahjong",
     
     "Mind Games",
-    "Some weird obscure game",
+    "ripoff ddr",
+    "korean ddr",
+    "wacky waving inflatable arm flailing tube man simulator 2021",
     " ",
     "Tree",
     "Tepris",
@@ -117,6 +121,7 @@ status_messages = (
     "with pudding",
     "with cats on cabs",
     "with cats, on cabs",
+    "Vib-Rhyddm",
     )
 
 

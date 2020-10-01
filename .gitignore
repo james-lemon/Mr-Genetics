@@ -127,5 +127,7 @@ dmypy.json
 
 # Please don't upload my bot's access token to github, kthx
 secret-token.txt
+secret-token-genetics.txt
+secret-token-duck.txt
 
 config.xml
