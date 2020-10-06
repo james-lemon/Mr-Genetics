@@ -3,7 +3,7 @@ from random import randrange
 status_messages = (
     "Mahjong",
     "Mahjong",
-    "Mahjong",
+    "Spicy Mahjong",
     "Tetris",
     "Pump it Up",
     "DanceDanceRevolution",
