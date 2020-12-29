@@ -388,16 +388,16 @@ async def help(ctx):
 
 @bot.event
 async def on_raw_reaction_add(payload):
-    await handle_reaction(payload)
+    await handle_reaction(payload, True)
 
 
 @bot.event
 async def on_raw_reaction_remove(payload):
-    await handle_reaction(payload)
+    await handle_reaction(payload, False)
 
 
 # Handles the add and remove reaction events for ALL messages on servers the bot is in
-async def handle_reaction(payload):
+async def handle_reaction(payload, reaction_added):
     if payload.user_id == bot.user.id or payload.guild_id is None:  # Don't process reactions we've added ourselves or aren't in a guild (probably in DMs?)
         return
     global addrole_message, addrole_role, addrole_description, addrole_category, addrole_dispname, addrole_editing, addrole_assignable, removerole_message, removerole_category, removerole_role, setadmin_message, setadmin_role
@@ -421,11 +421,11 @@ async def handle_reaction(payload):
                             role = get(guild.roles, id=int(role_id))
 
                             if config_man.is_role_assignable(category, str(role.id)):  # Check to make sure we are allowed to assign this role to regular users!
-                                if role in member.roles:  # Member already has this role, take it away!
+                                if not reaction_added:  # Member removed this reaction, take the role away!
                                     print("Removing role " + role.name + " from member " + member.display_name)
                                     await member.remove_roles(role, reason="Self-removed via bot (by reaction)")
                                     # print("Removed role")
-                                else:  # Member doesn't have the role, add it!
+                                else:  # Member added the reaction, add the role!
                                     print("Adding role " + role.name + " to member " + member.display_name)
                                     await member.add_roles(role, reason="Self-assigned via bot (by reaction)")
                                     # print("Added role ")

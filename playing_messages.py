@@ -2,8 +2,9 @@ from random import randrange
 
 status_messages = (
     "Mahjong",
-    "Mahjong",
+    "Mahjong Soul",
     "Spicy Mahjong",
+    "PONNYA",
     "Tetris",
     "Pump it Up",
     "DanceDanceRevolution",
@@ -38,6 +39,7 @@ status_messages = (
     "Rhythm Doctor",
     "Cytus",
     "Paca Paca Passion Special",
+    "Fuser",
     "Hangly-Man",
     "Magical Truck Adventure",
     "NotITG",
@@ -45,6 +47,9 @@ status_messages = (
     "Elite Beat Agents",
     "Muse Dash",
     "Vib-Ribbon",
+    "Million Hits",
+    "SSAMBA",
+    "Samba de Amigo",
     
     "Quick & Crash",
     "Roblox",
@@ -62,8 +67,6 @@ status_messages = (
     "CLOWN'S",
     "cow milking simulator 1997",
     "Udderly Tickets",
-    "Grumpy Cat photo booth",
-    "Cow Tipping: Shake, cattle, and roll",
     "Automatic Mahjong",
     "Neon FM",
     "Chunithm",
@@ -122,6 +125,7 @@ status_messages = (
     "with cats on cabs",
     "with cats, on cabs",
     "Vib-Rhyddm",
+    "Xuxa",
     )
 
 
