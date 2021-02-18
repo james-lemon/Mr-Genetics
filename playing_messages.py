@@ -1,10 +1,11 @@
 from random import randrange
 
 status_messages = (
-    "Mahjong",
+    "Mahjong",  # First we have actual rhythm games
     "Mahjong Soul",
     "Spicy Mahjong",
     "PONNYA",
+    "ポンニヤ",
     "Tetris",
     "Pump it Up",
     "DanceDanceRevolution",
@@ -51,7 +52,7 @@ status_messages = (
     "SSAMBA",
     "Samba de Amigo",
     
-    "Quick & Crash",
+    "Quick & Crash",  # Then games...
     "Roblox",
     "Minecraft",
     "Flash Flash Revolution",
@@ -92,8 +93,9 @@ status_messages = (
     "PS2 DDR games",
     "ITG PS2",
     "Rhythm Mahjong",
+    "co-op PIU songs",
     
-    "Mind Games",
+    "Mind Games",  # ...then heckposts
     "ripoff ddr",
     "korean ddr",
     "wacky waving inflatable arm flailing tube man simulator 2021",
@@ -126,6 +128,15 @@ status_messages = (
     "with cats, on cabs",
     "Vib-Rhyddm",
     "Xuxa",
+    "CS rhythm games at home",
+    "CS rhythm games at the arcade",
+    "taco bell",
+    "with cursed fanfic websites",
+    "on cursed cons",
+    "with cursed hardware",
+    "Pizza Vending Machine Simulator 2020",
+    "bright and tight arcade games",
+    "in the 90s",
     )
 
 

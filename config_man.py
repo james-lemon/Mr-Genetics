@@ -1,4 +1,10 @@
 #!/usr/bin/python
+
+# --
+# config_man.py - Rolelist configuration-related functions
+# --
+
+
 from pyexpat import ExpatError
 from xml.dom import minidom
 from xml.dom.minidom import parse
@@ -233,7 +239,7 @@ def sort_category(category):
         return "Sorted category \"" + category + "\" by alphabetical order"
     else:
         print("Failed to sort category: Category \"", category, "\"doesn't exist!")
-        return "Failed to sort category: Category \"", category, "\"doesn't exist!"
+        return "Failed to sort category: Category \"" + category + "\"doesn't exist!"
 
 
 # Returns text inside the first "admin_role" element

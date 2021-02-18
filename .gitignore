@@ -130,5 +130,6 @@ secret-token.txt
 secret-token-genetics.txt
 secret-token-duck.txt
 
+# Don't upload my config files either
 config.xml
-config-irg.xml
+config-irg*
