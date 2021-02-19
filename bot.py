@@ -14,7 +14,10 @@ from discord.utils import get
 import config_man
 import utils
 from rolelist import RoleList
+from scoreboard import Scoreboard
 import playing_messages
+
+
 print('Initalizing Mr. Genetics, using discordpy version ' + discord.__version__)
 
 intents = discord.Intents(guilds=True, members=True, emojis=True, messages=True, guild_reactions=True)  # Set our intents - Subscribes to certain types of events from discord
@@ -24,6 +27,7 @@ bot = commands.Bot(command_prefix='!', case_insensitive=True, intents=intents)
 bot.remove_command('help')  # Remove the default help command, imma make my own lel
 
 bot.add_cog(RoleList(bot))
+bot.add_cog(Scoreboard(bot))
 
 @bot.event
 async def on_ready():

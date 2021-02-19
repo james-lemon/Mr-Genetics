@@ -8,7 +8,7 @@ import config_man
 import discord
 from discord.utils import get
 
-# Checks if member has the admin role specified in the config. If no admin role is in the config, note that this ALWAYS returns true
+#  Checks if member has the admin role specified in the config. If no admin role is in the config, note that this ALWAYS returns true
 def authorize_admin(guild, member):
     role_id = config_man.get_admin_role()  # Try grabbing the admin role from the config, check if it's None
     if role_id is not None:
