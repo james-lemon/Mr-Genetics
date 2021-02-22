@@ -74,7 +74,12 @@ async def help(ctx):
                             "`newrolelist:`  Deletes the old role list and sends a new one to the current channel\n\n" \
                             "`setadminrole \"Role\":`  Sets a role as this bot's \"admin\" role\n\n" \
                             "`sortcategory \"Category\":`  Sorts the roles in a category (alphabetical order)\n\n" \
-                            "`setcategorydescription \"Category\" Description:` Sets a category's description (optional)\n\n" \
+                            "`setcategorydescription \"Category\" Description:` Sets a category's description (optional)\n\n\n" \
+                            "`scnew \"Fileame\" Description:` Creates a new scoreboard\n\n" \
+                            "`scload \"Filename\":` Loads a saved scoreboard from file\n\n" \
+                            "`scoreboard:` Sends a new scoreboard message\n\n" \
+                            "`scdisplayname Name:` Sets a scoreboard's display name\n\n" \
+                            "`scdescription Desc:` Sets a scoreboard's description\n\n" \
                             "Note:  If an admin role is set, you'll need that role to run ANY commands!"
         await ctx.author.send(embed=embed)
         await ctx.send(embed=utils.format_embed("DM'd ya fam 😉", False))

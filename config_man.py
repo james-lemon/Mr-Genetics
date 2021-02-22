@@ -15,6 +15,7 @@ import codecs
 # The config is organized like this:
 # <config>
 #   <admin_role>admin role id</admin_role>
+#   <scoreboard>Default scoreboard to load</scoreboard>
 #   <category name="Category name", listeningChannel="channel ID", listeningMessage="message ID", description="optional description">
 #       <role name="Role id" dispName="Role display name" emoji="Unicode emoji/Custom emoji name" usesCustomEmoji="True/False", assignable="True/False">Role Description</role>
 #       <role>...
@@ -270,6 +271,36 @@ def set_admin_role(role_id):
 
     save_config()
     return True
+
+
+# Returns text inside the first "scoreboard" element
+def get_default_scoreboard():
+    elements = config.getElementsByTagName("scoreboard")
+    if len(elements) >= 1:
+        scoreboard = elements[0].firstChild.nodeValue
+        if scoreboard is not None:
+            return scoreboard
+    return None
+
+
+# Sets the scoreboard element in the config
+def set_default_scoreboard(scrbrd):
+    scoreboard_elements = config.getElementsByTagName("scoreboard")
+    scoreboard = None
+    if len(scoreboard_elements) == 0:  # First: Create the scoreboard tag if it doesn't exist
+        scoreboard = dom.createElement("scoreboard")
+        config.appendChild(scoreboard)
+    else:
+        scoreboard = scoreboard_elements[0]
+
+    if scoreboard.hasChildNodes():  # If there's old children nodes, remove them all
+        for child in scoreboard.childNodes:
+            scoreboard.removeChild(child)
+    scoreboard.appendChild(dom.createTextNode(scrbrd))
+
+    save_config()
+    return True
+
 
 
 # Let's open our config:

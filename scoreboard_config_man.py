@@ -69,7 +69,15 @@ class ScoreboardConfig:
                 return 1
             else:
                 print("Error: Scoreboard config file not found!")
+                self.sc_dom = None
+                self.sc_config = None
+                self.sc_name = None
                 return -1
+
+
+    def is_scoreboard_loaded(self):
+        return self.sc_config is not None and self.sc_name is not None  # At a minimum our config object shouldn't be broken (our config name should match up with this too)
+
 
 
     # Saves the currently loaded scoreboard config to file
@@ -88,10 +96,11 @@ class ScoreboardConfig:
     def get_disp_name(self):
         if self.sc_config is not None:
             elements = self.sc_config.getElementsByTagName("display_name")
-            if len(elements) >= 1:
+            if len(elements) >= 1 and elements[0].firstChild.nodeValue is not None:
                 return elements[0].firstChild.nodeValue
             else:
                 return self.sc_name
+        return None
 
 
 
@@ -112,4 +121,35 @@ class ScoreboardConfig:
             disp_name.appendChild(self.sc_dom.createTextNode(name))
 
             print("Set scoreboard display name to \"" + name + "\"")
+            self.save_sc_config()
+
+
+
+    # Gets the scoreboard's description
+    def get_desc(self):
+        if self.sc_config is not None:
+            elements = self.sc_config.getElementsByTagName("description")
+            if len(elements) >= 1 and elements[0].firstChild.nodeValue is not None:
+                return elements[0].firstChild.nodeValue
+        return ""
+
+
+
+    # Sets the scoreboard's description
+    def set_desc(self, description):
+        if self.sc_config is not None:
+            desc_elems = self.sc_config.getElementsByTagName("description")  # Try to get the desc element - if it doesn't exist, make one
+            desc = None
+            if len(desc_elems) == 0:
+                desc = self.sc_dom.createElement("description")
+                self.sc_config.appendChild(desc)
+            else:
+                desc = desc_elems[0]
+
+            if desc.hasChildNodes():
+                for child in desc.childNodes:
+                    desc.removeChild(child)
+            desc.appendChild(self.sc_dom.createTextNode(description))
+
+            print("Set scoreboard description to \"" + description + "\"")
             self.save_sc_config()
