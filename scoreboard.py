@@ -104,6 +104,8 @@ class Scoreboard(commands.Cog):
             if not self.sc_config.is_scoreboard_loaded():
                 await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
                 return
+
+            await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard
             embedd = discord.Embed(title="Verified user " + member.display_name + "'s score", description="Song1 - " + str(score), colour=0x16E200)
             await ctx.send(embed=embedd)
 
@@ -116,13 +118,55 @@ class Scoreboard(commands.Cog):
                 await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
                 return
 
-            embed = discord.Embed(title="👑   Event Leaderboard  👑",  # Title: Leaderboard
-                                  description=self.sc_config.get_desc() + "\n.",  # Description
-                                  color=0xFF7D00)
-            embed.set_author(name=self.sc_config.get_disp_name(), url="https://www.youtube.com/watch?v=2ocykBzWDiM")  # Author field: Event name, link
+            await self.generate_scoreboard_message(ctx, True)
+
+
+    # Generates a scoreboard message, either updating the existing one or sending a new one
+    async def generate_scoreboard_message(self, ctx, generate_new):
+        # Make sure a scoreboard config is loaded first
+        if not self.sc_config.is_scoreboard_loaded():
+            print("Error: Attempted to generate a scoreboard message while no scoreboard config was loaded")
+            return
+
+        # First, if we're sending a new message we should delete the old one (if it exists)
+        old_msg_id = self.sc_config.get_scoreboard_msg()
+        if generate_new:
+            if old_msg_id is not None:
+                try:
+                    old_msg = await self.bot.get_channel(old_msg_id[0]).fetch_message(old_msg_id[1])
+                    await old_msg.delete()
+                except discord.errors.NotFound:
+                    print("Received 404 trying to delete scoreboard message with ID " + str(old_msg_id[1]) + ", was it already deleted?")
+
+        # Next, generate the message embed
+        embed = discord.Embed(title="👑   Event Leaderboard  👑",  # Title: Leaderboard
+                              description=self.sc_config.get_desc() + "\n.",  # Description
+                              color=0xFF7D00)
+        embed.set_author(name=self.sc_config.get_disp_name(),
+                         url="https://www.youtube.com/watch?v=2ocykBzWDiM")  # Author field: Event name, link
+        if generate_new:
             embed.set_footer(text="Type !score to submit a score!")  # Footer: Brief instructions
-            embed.add_field(name="Song 1", value="1) Gene - *573*\n2) etics - *-5*\n ")  # Fields: Individual field/score combos
-            embed.add_field(name="Song 2", value="1) The Duck - *574*\n2) 4848 - *100*\n ")
-            embed.add_field(name="The third field",
-                            value="1) Player 1 - *574*\n2) Player 2 - *100*\n3) Player 3 - *12*\n...and 4 other players\n ")
-            await ctx.send(embed=embed)
+        else:
+            embed.set_footer(text="SCORE")  # Debug: Visibly change the footer depending on whether we're sending a new message or not
+        embed.add_field(name="Song 1",
+                        value="1) Gene - *573*\n2) etics - *-5*\n ")  # Fields: Individual field/score combos
+        embed.add_field(name="Song 2", value="1) The Duck - *574*\n2) 4848 - *100*\n ")
+        embed.add_field(name="The third field",
+                        value="1) Player 1 - *574*\n2) Player 2 - *100*\n3) Player 3 - *12*\n...and 4 other players\n ")
+
+        # Updating an old message
+        if not generate_new:
+            try:
+                msg = await self.bot.get_channel(old_msg_id[0]).fetch_message(old_msg_id[1])
+                await msg.edit(embed=embed)
+                print("Updated scoreboard message")
+
+            except discord.errors.NotFound:  # 404 i dunno where the old message went
+                print("Error updating scoreboard message: Message with ID " + str(old_msg_id[1]) + " not found, generating new message instead")
+                generate_new = True
+
+        # Generating a new message (or updating the old one failed above)
+        if generate_new:
+            msg = await ctx.send(embed=embed)
+            self.sc_config.set_scoreboard_msg(msg.channel.id, msg.id)
+            print("New scoreboard message sent (ID=" + str(msg.id) + ")")

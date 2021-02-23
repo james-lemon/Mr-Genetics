@@ -20,7 +20,7 @@ import codecs
 #   <submit_enabled>True/False</submit_enabled>
 #   <display_name>name</display_name>
 #   <description>event description</description>
-#   <leaderboard_message channel="" msg=""/>
+#   <scoreboard_message channel="" message=""/>
 #   <field name="Field name" type="Field type">
 #       <entry player="Player name" verified="True/False">Entry value</role>
 #       <entry>...
@@ -153,3 +153,33 @@ class ScoreboardConfig:
 
             print("Set scoreboard description to \"" + description + "\"")
             self.save_sc_config()
+
+
+
+    # Gets the channel/message ID of the scoreboard message
+    def get_scoreboard_msg(self):
+        if self.sc_config is not None:
+            msgs = self.sc_config.getElementsByTagName("scoreboard_message")
+            if len(msgs) >= 1:
+                msg = msgs[0]
+                if msg.hasAttribute("channel") and msg.hasAttribute("message"):
+                    return [int(msg.getAttribute("channel")), int(msg.getAttribute("message"))]
+        return None
+
+
+    # Sets the channel/message ID the scoreboard message is in
+    def set_scoreboard_msg(self, channel, message):
+        if self.sc_config is not None:
+            msgs = self.sc_config.getElementsByTagName("scoreboard_message")
+            msg = None
+            if len(msgs) == 0:
+                msg = self.sc_dom.createElement("scoreboard_message")
+                self.sc_config.appendChild(msg)
+            else:
+                msg = msgs[0]
+
+            msg.setAttribute("channel", str(channel))
+            msg.setAttribute("message", str(message))
+            print("Scoreboard message set to ID " + str(message))
+            self.save_sc_config()
+
