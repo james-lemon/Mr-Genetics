@@ -21,8 +21,8 @@ import codecs
 #   <display_name>name</display_name>
 #   <description>event description</description>
 #   <scoreboard_message channel="" message=""/>
-#   <field name="Field name" type="Field type">
-#       <entry player="Player name" verified="True/False">Entry value</role>
+#   <field name="Field name" type="Field type" emote="">
+#       <entry verified_value=score, unverified_value=score2>Player name</role>
 #       <entry>...
 #   </field>
 #   <category>...
@@ -183,3 +183,81 @@ class ScoreboardConfig:
             print("Scoreboard message set to ID " + str(message))
             self.save_sc_config()
 
+
+    # Gets a list of fields for the current scoreboard as an array of {field name,value}
+    def get_fields(self):
+        if self.sc_config is not None:
+            fields = self.sc_config.getElementsByTagName("field")
+            ret = {}
+            for field in fields:
+                if field.hasAttribute("name") and field.hasAttribute("type"):
+                    field_type = self.parse_field_type(field.getAttribute("type"))
+                    if field_type is not None:
+                        ret[field.getAttribute("name")] = field_type
+            return ret
+
+        return None
+
+
+    # Gets a list of fields for the current scoreboard as an array of {field name, emoji}
+    def get_fields_emoji(self):
+        if self.sc_config is not None:
+            fields = self.sc_config.getElementsByTagName("field")
+            ret = {}
+            for field in fields:
+                if field.hasAttribute("name") and field.hasAttribute("emote"):
+                    ret[field.getAttribute("name")] = field.getAttribute("emote")
+            return ret
+
+        return None
+
+
+    # Adds or edits a field in the config
+    def update_field(self, name, type, emoji):
+        if self.sc_config is not None:
+            field_elems = self.sc_config.getElementsByTagName("field")
+            field = None
+            for prelim_field in field_elems:
+                if prelim_field.hasAttribute("name") and prelim_field.getAttribute("name") == name:
+                    print("Update field")
+                    field = prelim_field
+                    break
+
+            if field is None:  # Didn't find a field above, make a new one
+                print("New field")
+                field = self.sc_dom.createElement("field")
+                self.sc_config.appendChild(field)
+
+            field.setAttribute("name", name)
+            field.setAttribute("type", type)
+            field.setAttribute("emote", emoji)
+
+            self.save_sc_config()
+            print("Updated field " + name + " (type: " + type + ", emote: " + emoji + ")")
+            return True
+        return None
+
+
+    # Deletes a field in the config
+    def remove_field(self, name):
+        if self.sc_config is not None:
+            field_elems = self.sc_config.getElementsByTagName("field")
+            for prelim_field in field_elems:
+                if prelim_field.hasAttribute("name") and prelim_field.getAttribute("name") == name:
+                    self.sc_config.removeChild(prelim_field)
+                    self.save_sc_config()
+                    return True
+            return False
+        return None
+
+
+    # Gets a field type, given a string
+    def parse_field_type(self, field_type):
+        try:
+            field_type = int(field_type)
+        except ValueError:
+            return None
+
+        if field_type >= 0 and field_type < 1:  # Todo: We only support one field type rn
+            return field_type
+        return None

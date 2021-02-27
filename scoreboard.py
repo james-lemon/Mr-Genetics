@@ -18,13 +18,19 @@ class Scoreboard(commands.Cog):
     score_messages = (  # Random messages to display on score submission
         "Good luck on the win!",
         "Go for the gold!",
-        "You've shown us your ultimate dance!",
         "Ganbare!",
         "***Do it!!!***",
+        "Yo! Tear it up!"
+        "Your scores are on FIRE!",
+        "Can I call you a dancin' MASTER?",
+        "Wow, your steps are AMAZIN'!",
     )
+
     def __init__(self, bot):
         self.bot = bot
         self.sc_config = scoreboard_config_man.ScoreboardConfig()
+
+        self.scfield_emote = None
 
         default_scoreboard = config_man.get_default_scoreboard()
         if default_scoreboard is not None:
@@ -85,6 +91,109 @@ class Scoreboard(commands.Cog):
 
 
 
+    # Creates or updates a scoreboard field
+    @commands.command()
+    async def scfield(self, ctx, name, type):
+        if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and utils.authorize_admin(ctx.guild, ctx.author):  # Prevent this from running outside of a guild or by non-admins:
+            if not self.sc_config.is_scoreboard_loaded():
+                await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
+                return
+
+            type = 0  # Todo: We only support one field type for now, so enforce it here
+            ftype = self.sc_config.parse_field_type(type)
+            if ftype is None:
+                await ctx.send(embed=utils.format_embed("Error: Invalid field type \"" + type + "\"!", True))
+                return
+
+            fields = self.sc_config.get_fields()
+            if name in fields.keys():
+                print("Field " + name + " exists")
+                embed = discord.Embed(title="Editing existing scoreboard field:", color=0x4EDB23)
+            else:
+                print("Field " + name + " doesn't exist")
+                embed = discord.Embed(title="Creating new scoreboard field:", color=0x4EDB23)
+
+
+            msg_text = '\n**Name:** ' + name
+            msg_text += '\n**Type:** ' + str(type)
+            msg_text += '\n\nTo confirm: React with an emote to associate with this field!'
+
+            embed.description = msg_text
+            msg = await ctx.send(embed=embed)
+
+            def reaction_check(reaction, user):  # Checks if the emoji reaction to sc_field is valid or not
+                if user != ctx.author:  # First: Only accept reactions from the command sender
+                    return False
+
+                if str(reaction.emoji) in self.sc_config.get_fields_emoji().values():  # Make sure the emoji isn't in use in another field
+                    print("Reaction check failed: Duplicate emoji")
+                    return False
+
+                if reaction.custom_emoji:  # Finally: If this is a custom emote, make sure the bot can actually use it
+                    emoji = get(ctx.guild.emojis, id=reaction.emoji.id)
+                    if emoji is None or emoji.available is False:
+                        return False
+
+                self.scfield_emote = str(reaction.emoji)
+                return True
+
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60, check=reaction_check)
+            except asyncio.TimeoutError:
+                msg_text += '\n**Waiting for an emote timed out - run this command again**'
+                embed.description = msg_text
+                embed.color = 0xDB2323
+                await msg.edit(embed=embed)
+            else:
+                print(self.scfield_emote)
+                self.sc_config.update_field(name, str(type), self.scfield_emote)
+                await msg.add_reaction("👍")
+                #await msg.channel.send(embed=utils.format_embed("Updated field " + name + "!", False))
+                await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard, BOI
+
+
+    # Creates or updates a scoreboard field
+    @commands.command()
+    async def scremovefield(self, ctx, name):
+        if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and utils.authorize_admin(ctx.guild, ctx.author):  # Prevent this from running outside of a guild or by non-admins:
+            if not self.sc_config.is_scoreboard_loaded():
+                await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
+                return
+
+            fields = self.sc_config.get_fields()
+            if name in fields.keys():
+                embed = discord.Embed(title="Removing scoreboard field:", color=0x4EDB23)
+            else:
+                ctx.send(embed=utils.format_embed("Error: Field " + name + " doesn't exist!", True))
+                return
+
+
+            msg_text = '\n**Name:** ' + name
+            msg_text += '\n**Warning: This will permanently delete this field and its scores!**'
+            msg_text += '\n\nTo confirm deletion: React with "❌"'
+
+            embed.description = msg_text
+            msg = await ctx.send(embed=embed)
+            await msg.add_reaction("❌")
+
+            def reaction_check(reaction, user):  # Checks if the emoji reaction to scremovefield is valid or not
+                return user == ctx.author and str(reaction.emoji) == '❌'  # Only accept 'X' reactions from the command sender
+
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60, check=reaction_check)
+            except asyncio.TimeoutError:
+                msg_text += '\n**Waiting for a reaction timed out - run this command again**'
+                embed.description = msg_text
+                embed.color = 0xDB2323
+                await msg.edit(embed=embed)
+            else:
+                self.sc_config.remove_field(name)
+                #await msg.channel.send(embed=utils.format_embed("Deleted field " + name, False))
+                await msg.add_reaction("👍")
+                await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard, BOI
+
+
+
     #  Submits a score for entry
     @commands.command()
     async def submit(self, ctx, score=-1):
@@ -93,20 +202,25 @@ class Scoreboard(commands.Cog):
                 await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded!", True))
                 return
             print(Scoreboard.score_messages[randrange(len(Scoreboard.score_messages))])
-            embedd = discord.Embed(title="Score submitted for verification - " + Scoreboard.score_messages[randrange(len(Scoreboard.score_messages))], description="Song1 - " + str(score), colour=0x16E200)
+            if randrange(0, 100) == 0:
+                scmsg = "You showed us... your ULTIMATE dance... Thank you very much... I can't stop CRYING, BUCKETS of TEARS....."
+            else:
+                scmsg = Scoreboard.score_messages[randrange(len(Scoreboard.score_messages))]
+
+            embedd = discord.Embed(title="Score submitted for verification - " + scmsg, description="Song1 - " + str(score), colour=0x16E200)
             await ctx.send(embed=embedd)
 
 
     #  Verifies a user's score entry (optionally accepting an argument for a score correction
     @commands.command()
-    async def verify(self, ctx, member: discord.Member, score=-1):
+    async def verify(self, ctx, member, score=-1):
         if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and utils.authorize_admin(ctx.guild, ctx.author):  # Prevent this from running outside of a guild or by non-admins:
             if not self.sc_config.is_scoreboard_loaded():
                 await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
                 return
 
             await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard
-            embedd = discord.Embed(title="Verified user " + member.display_name + "'s score", description="Song1 - " + str(score), colour=0x16E200)
+            embedd = discord.Embed(title="Verified user " + member + "'s score", description="Song1 - " + str(score), colour=0x16E200)
             await ctx.send(embed=embedd)
 
 
@@ -144,15 +258,15 @@ class Scoreboard(commands.Cog):
                               color=0xFF7D00)
         embed.set_author(name=self.sc_config.get_disp_name(),
                          url="https://www.youtube.com/watch?v=2ocykBzWDiM")  # Author field: Event name, link
-        if generate_new:
-            embed.set_footer(text="Type !score to submit a score!")  # Footer: Brief instructions
-        else:
-            embed.set_footer(text="SCORE")  # Debug: Visibly change the footer depending on whether we're sending a new message or not
-        embed.add_field(name="Song 1",
-                        value="1) Gene - *573*\n2) etics - *-5*\n ")  # Fields: Individual field/score combos
-        embed.add_field(name="Song 2", value="1) The Duck - *574*\n2) 4848 - *100*\n ")
-        embed.add_field(name="The third field",
-                        value="1) Player 1 - *574*\n2) Player 2 - *100*\n3) Player 3 - *12*\n...and 4 other players\n ")
+        embed.set_footer(text="Type !score to submit a score!")  # Footer: Brief instructions
+        #embed.add_field(name="Song 1",
+        #                value="1) Gene - *573*\n2) etics - *-5*\n ")  # Fields: Individual field/score combos
+        #embed.add_field(name="Song 2", value="1) The Duck - *574*\n2) 4848 - *100*\n ")
+        #embed.add_field(name="The third field",
+        #                value="1) Player 1 - *574*\n2) Player 2 - *100*\n3) Player 3 - *12*\n...and 4 other players\n ")
+        for field, emoji in self.sc_config.get_fields_emoji().items():
+            fieldval = "1) The Duck: *574*\n2) 4848: *-100*"
+            embed.add_field(name=emoji + " " + field, value=fieldval)
 
         # Updating an old message
         if not generate_new:
@@ -170,3 +284,4 @@ class Scoreboard(commands.Cog):
             msg = await ctx.send(embed=embed)
             self.sc_config.set_scoreboard_msg(msg.channel.id, msg.id)
             print("New scoreboard message sent (ID=" + str(msg.id) + ")")
+

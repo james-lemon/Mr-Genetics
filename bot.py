@@ -60,6 +60,18 @@ async def introduction(ctx):
         await ctx.send("*Musical quack*, da-don 🦆")
 
 
+@bot.event
+async def on_message(message):
+    if message.author.id != bot.user.id and bot.user in message.mentions:  # On pings, react with duck
+        duck_emote = str(get(message.guild.emojis, name="discoduck"))
+        if duck_emote == "None":
+            duck_emote = "🦆"
+        print(duck_emote)
+        await message.add_reaction(duck_emote)
+    else:
+        await bot.process_commands(message)
+
+
 # A help command that DMs the sender with command info
 @bot.command()
 async def help(ctx):
@@ -80,6 +92,8 @@ async def help(ctx):
                             "`scoreboard:` Sends a new scoreboard message\n\n" \
                             "`scdisplayname Name:` Sets a scoreboard's display name\n\n" \
                             "`scdescription Desc:` Sets a scoreboard's description\n\n" \
+                            "`scfield \"name\" type:` Adds/updates a scoreboard field\n\n"\
+                            "`scremovefield \"name\":` Removes a scoreboard field\n\n" \
                             "Note:  If an admin role is set, you'll need that role to run ANY commands!"
         await ctx.author.send(embed=embed)
         await ctx.send(embed=utils.format_embed("DM'd ya fam 😉", False))
