@@ -60,8 +60,10 @@ class Scoreboard(commands.Cog):
             loaded = self.sc_config.load_sc_config(name, True, description)
             if loaded == 0:
                 await ctx.send(embed=utils.format_embed("Loaded scoreboard " + name + " - this really shouldn't happen :sweat_smile:", False))
+                config_man.set_default_scoreboard(name)
             elif loaded == 1:
                 await ctx.send(embed=utils.format_embed("Created new scoreboard " + name, False))
+                config_man.set_default_scoreboard(name)
             else:
                 await ctx.send(embed=utils.format_embed("Error: Scoreboard config not found: " + name, True))
 
@@ -323,6 +325,8 @@ class Scoreboard(commands.Cog):
                     fieldtext += "  ✔"
                 fieldtext += "\n"
 
+            if fieldtext == "":
+                fieldtext = "No scores yet!"
             embed.add_field(name=emoji + "  " + field, value=fieldtext)
 
         # Updating an old message
