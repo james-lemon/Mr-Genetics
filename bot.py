@@ -75,9 +75,10 @@ async def on_message(message):
 # A help command that DMs the sender with command info
 @bot.command()
 async def help(ctx):
-    if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and utils.authorize_admin(ctx.guild, ctx.author):  # First: Authorize an admin is running this command
+    if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member):  # First: Authorize an admin is running this command
         embed = discord.Embed(title="Command Help", colour=0xFF7D00)  # Create an embed, set it's title and color
-        embed.description = "\n`help:` Get sent this list\n\n" \
+        if utils.authorize_admin(ctx.guild, ctx.author):
+            embed.description = "\n`help:` Get sent this list\n\n" \
                             "`addrole \"Category\" \"Role\" Description:`  Adds an assignable role to the role list\n\n" \
                             "`adddisprole \"Category\" \"Role\" Description:`  Adds a non-assignable role to the role list\n\n" \
                             "`editrole \"Category\" \"Role\" Description:`  Removes and re-adds a role to the role list\n\n" \
@@ -94,7 +95,15 @@ async def help(ctx):
                             "`scdescription Desc:` Sets a scoreboard's description\n\n" \
                             "`scfield \"name\" type:` Adds/updates a scoreboard field\n\n"\
                             "`scremovefield \"name\":` Removes a scoreboard field\n\n" \
-                            "Note:  If an admin role is set, you'll need that role to run ANY commands!"
+                            "`submit score:` Submits a score to the scoreboard (adding a score is optional)\n\n" \
+                            "`verify user score:` Verifies user's score on the scoreboard (score is optional if the user provided a score)\n\n" \
+                            "Note:  If an admin role is set, you'll need that role to run most commands!"
+        else:
+            embed.description = "\n`!help:` Get sent this list\n\n" \
+                            "`!submit <score>:` Submits a score to the leaderboard (specifying score is optional, must be verified by an admin)\n\n\n" \
+                            "...yeah there's not much else non-admins can do :/\n\n" \
+                            "I guess you can ping me if you get super bored lol"
+
         await ctx.author.send(embed=embed)
         await ctx.send(embed=utils.format_embed("DM'd ya fam 😉", False))
 

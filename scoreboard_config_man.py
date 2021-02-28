@@ -344,3 +344,20 @@ class ScoreboardConfig:
 
                     return entries
         return None
+
+
+    # Adds or updates a score entry
+    def remove_entry(self, field, user):
+        if self.sc_config is not None:
+            field_elems = self.sc_config.getElementsByTagName("field")  # Find the field to remove from
+            for field_elem in field_elems:
+                if field_elem.hasAttribute("name") and field_elem.getAttribute("name") == field:
+
+                    entry_elems = field_elem.getElementsByTagName("entry")  # Now find the score entry to remove
+                    for entry_elem in entry_elems:
+                        if entry_elem.firstChild.nodeValue == str(user):  # Found the field!
+                            field_elem.removeChild(entry_elem)
+                            print("Removed " + str(user) + "'s entry from " + field)
+                            self.save_sc_config()
+                            return True
+        return False

@@ -253,6 +253,23 @@ class Scoreboard(commands.Cog):
             await ctx.send(embed=embedd)
 
 
+    # Removes a score entry from the scoreboard
+    @commands.command()
+    async def scremoveentry(self, ctx, member: discord.Member):
+        if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and utils.authorize_admin(ctx.guild, ctx.author):  # Prevent this from running outside of a guild or by non-admins:
+            if not self.sc_config.is_scoreboard_loaded():
+                await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
+                return
+
+            field = "Song 1"  # Debug: Submit scores only to the default field
+            result = self.sc_config.remove_entry(field, member.id)
+            if result:
+                await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard
+                await ctx.send(embed=utils.format_embed("Removed " + member.display_name + "'s entry from " + field, False))
+            else:
+                await ctx.send(embed=utils.format_embed("Unable to remove " + member.display_name + "'s entry from " + field, True))
+
+
     # Sends a new leaderboard message
     @commands.command()
     async def scoreboard(self, ctx):
