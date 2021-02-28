@@ -20,7 +20,7 @@ class Scoreboard(commands.Cog):
         "Go for the gold!",
         "Ganbare!",
         "***Do it!!!***",
-        "Yo! Tear it up!"
+        "Yo! Tear it up!",
         "Your scores are on FIRE!",
         "Can I call you a dancin' MASTER?",
         "Wow, your steps are AMAZIN'!",
@@ -75,6 +75,7 @@ class Scoreboard(commands.Cog):
                 await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
                 return
             self.sc_config.set_disp_name(name)
+            await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard, BOI
             await ctx.send(embed=utils.format_embed("Set scoreboard display name to " + name, False))
 
 
@@ -87,6 +88,7 @@ class Scoreboard(commands.Cog):
                 await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
                 return
             self.sc_config.set_desc(desc)
+            await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard, BOI
             await ctx.send(embed=utils.format_embed("Set scoreboard description to " + desc, False))
 
 
@@ -201,26 +203,53 @@ class Scoreboard(commands.Cog):
             if not self.sc_config.is_scoreboard_loaded():
                 await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded!", True))
                 return
-            print(Scoreboard.score_messages[randrange(len(Scoreboard.score_messages))])
+
+            field = "Song 1"  # Debug: Submit scores only to the default field
+
+            self.sc_config.update_entry(field, ctx.author.id, score, False)
+
             if randrange(0, 100) == 0:
-                scmsg = "You showed us... your ULTIMATE dance... Thank you very much... I can't stop CRYING, BUCKETS of TEARS....."
+                scmsg = "You showed us... your ULTIMATE dance... Thank you very much... I can't stop CRYING, BUCKETS of ***TEARS.....***"
             else:
                 scmsg = Scoreboard.score_messages[randrange(len(Scoreboard.score_messages))]
 
-            embedd = discord.Embed(title="Score submitted for verification - " + scmsg, description="Song1 - " + str(score), colour=0x16E200)
+            await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard
+            embedd = discord.Embed(title="Score submitted for verification - " + scmsg, description=field + ": " + str(score), colour=0x16E200)
             await ctx.send(embed=embedd)
 
 
-    #  Verifies a user's score entry (optionally accepting an argument for a score correction
+
+    #  Sets a user's verified score entry (to a specified score if specified, else to their unverified score if they have one)
     @commands.command()
-    async def verify(self, ctx, member, score=-1):
+    async def verify(self, ctx, member: discord.Member, score=-1):
         if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and utils.authorize_admin(ctx.guild, ctx.author):  # Prevent this from running outside of a guild or by non-admins:
             if not self.sc_config.is_scoreboard_loaded():
                 await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
                 return
 
+            field = "Song 1"  # Debug: Submit scores only to the default field
+
+            #try:
+            if int(score) == -1:  # Score = -1 means score wasn't specified as an argument, so verify the user's unverified score
+                existing_scores = self.sc_config.get_entry(field, member.id)
+                print("Attempting verify of user " + member.display_name + "'s unverified score")
+                print(existing_scores)
+                if existing_scores is False or existing_scores[0] == -1:  # Plot twist: The user doesn't have an unverified score to verify
+                    await ctx.send(embed=utils.format_embed("Error: This user doesn't have an unverified score! Specify their score after their username!", True))
+                    return
+
+                else:  # They have an unverified score, set their new verified score to it
+                    score = existing_scores[0]
+
+            #except TypeError as e:
+#                print("TypeError in score verification: " + str(e) + "\nWas the specified score an int?")
+#                await ctx.send(embed=utils.format_embed("Error: Specified score \"" + str(score) + "\" is not an int!", True))
+#                return
+
+            self.sc_config.update_entry(field, member.id, score, True)
+
             await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard
-            embedd = discord.Embed(title="Verified user " + member + "'s score", description="Song1 - " + str(score), colour=0x16E200)
+            embedd = discord.Embed(title="Set user " + member.display_name + "'s verified score", description=field + ": " + str(score), colour=0x16E200)
             await ctx.send(embed=embedd)
 
 
@@ -244,6 +273,9 @@ class Scoreboard(commands.Cog):
 
         # First, if we're sending a new message we should delete the old one (if it exists)
         old_msg_id = self.sc_config.get_scoreboard_msg()
+        if old_msg_id is None:  # Don't even have an old message id, we gotta make a new one
+            generate_new = True
+
         if generate_new:
             if old_msg_id is not None:
                 try:
@@ -258,15 +290,23 @@ class Scoreboard(commands.Cog):
                               color=0xFF7D00)
         embed.set_author(name=self.sc_config.get_disp_name(),
                          url="https://www.youtube.com/watch?v=2ocykBzWDiM")  # Author field: Event name, link
-        embed.set_footer(text="Type !score to submit a score!")  # Footer: Brief instructions
-        #embed.add_field(name="Song 1",
-        #                value="1) Gene - *573*\n2) etics - *-5*\n ")  # Fields: Individual field/score combos
-        #embed.add_field(name="Song 2", value="1) The Duck - *574*\n2) 4848 - *100*\n ")
-        #embed.add_field(name="The third field",
-        #                value="1) Player 1 - *574*\n2) Player 2 - *100*\n3) Player 3 - *12*\n...and 4 other players\n ")
-        for field, emoji in self.sc_config.get_fields_emoji().items():
-            fieldval = "1) The Duck: *574*\n2) 4848: *-100*"
-            embed.add_field(name=emoji + " " + field, value=fieldval)
+        embed.set_footer(text="Type !score to submit a score  -  ⚠ scores are unverified")  # Footer: Brief instructions
+
+        for field, emoji in self.sc_config.get_fields_emoji().items():  # First get a list of fields to display...
+            fieldtext = ""
+            entries = self.sc_config.get_entries(field, ctx.guild)  # ...then a list of entries for that field
+            entry_members = sorted(entries.items(), key=lambda i: i[1][0], reverse=True)  # Get a list of users, sorted by their entry's highest score
+            # print(entry_members)
+            for i, entry in enumerate(entry_members):  # And place em on the leaderboard!
+                # print(entry[0] + str(entry[1][0]) + str(entry[1][1]))
+                fieldtext += str(i + 1) + ") " + entry[0] + " *" + str(entry[1][0]) + "*"
+                if entry[1][1] is False:  # This entry is unverified, mark it as such
+                    fieldtext += "  ⚠"
+                else:
+                    fieldtext += "  ✔"
+                fieldtext += "\n"
+
+            embed.add_field(name=emoji + "  " + field, value=fieldtext)
 
         # Updating an old message
         if not generate_new:
@@ -275,7 +315,7 @@ class Scoreboard(commands.Cog):
                 await msg.edit(embed=embed)
                 print("Updated scoreboard message")
 
-            except discord.errors.NotFound:  # 404 i dunno where the old message went
+            except (TypeError, discord.errors.NotFound) as e:  # 404 i dunno where the old message went
                 print("Error updating scoreboard message: Message with ID " + str(old_msg_id[1]) + " not found, generating new message instead")
                 generate_new = True
 
