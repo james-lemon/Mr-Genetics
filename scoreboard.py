@@ -31,6 +31,8 @@ class Scoreboard(commands.Cog):
         self.sc_config = scoreboard_config_man.ScoreboardConfig()
 
         self.scfield_emote = None
+        self.scsubmit_field = {}
+        self.scverify_field = {}
 
         default_scoreboard = config_man.get_default_scoreboard()
         if default_scoreboard is not None:
@@ -117,7 +119,6 @@ class Scoreboard(commands.Cog):
                 print("Field " + name + " doesn't exist")
                 embed = discord.Embed(title="Creating new scoreboard field:", color=0x4EDB23)
 
-
             msg_text = '\n**Name:** ' + name
             msg_text += '\n**Type:** ' + str(type)
             msg_text += '\n\nTo confirm: React with an emote to associate with this field!'
@@ -126,10 +127,10 @@ class Scoreboard(commands.Cog):
             msg = await ctx.send(embed=embed)
 
             def reaction_check(reaction, user):  # Checks if the emoji reaction to sc_field is valid or not
-                if user != ctx.author:  # First: Only accept reactions from the command sender
+                if user != ctx.author or reaction.message.id != msg.id:  # First: Only accept reactions from the command sender on the message we just sent
                     return False
 
-                if str(reaction.emoji) in self.sc_config.get_fields_emoji().values():  # Make sure the emoji isn't in use in another field
+                if str(reaction.emoji) in self.sc_config.get_fields_emoji().keys():  # Make sure the emoji isn't in use in another field
                     print("Reaction check failed: Duplicate emoji")
                     return False
 
@@ -181,7 +182,7 @@ class Scoreboard(commands.Cog):
             await msg.add_reaction("❌")
 
             def reaction_check(reaction, user):  # Checks if the emoji reaction to scremovefield is valid or not
-                return user == ctx.author and str(reaction.emoji) == '❌'  # Only accept 'X' reactions from the command sender
+                return user == ctx.author and reaction.message.id == msg.id and str(reaction.emoji) == '❌'  # Only accept 'X' reactions from the command sender on the message we sent
 
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=60, check=reaction_check)
@@ -206,18 +207,57 @@ class Scoreboard(commands.Cog):
                 await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded!", True))
                 return
 
-            field = "Song 1"  # Debug: Submit scores only to the default field
-
-            self.sc_config.update_entry(field, ctx.author.id, score, False)
-
-            if randrange(0, 100) == 0:
-                scmsg = "You showed us... your ULTIMATE dance... Thank you very much... I can't stop CRYING, BUCKETS of ***TEARS.....***"
+            # Our logic here changes if there's only one field on the scoreboard
+            # If there's one field, select it by default and just submit scores to that
+            # For multiple fields, we need to prompt the user to select a field
+            fields = self.sc_config.get_fields_emoji()
+            if len(fields) == 1:
+                sub_field = list(fields.values())[0]
             else:
-                scmsg = Scoreboard.score_messages[randrange(len(Scoreboard.score_messages))]
+                sub_field = None
 
-            await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard
-            embedd = discord.Embed(title="Score submitted for verification - " + scmsg, description=field + ": " + str(score), colour=0x16E200)
-            await ctx.send(embed=embedd)
+            # Our reaction-based field prompt - Validate input if the submitting user reacted to it, and their reaction is a field emoji
+            def sub_reaction_check(reaction, user):
+                if user == ctx.author and reaction.message.id == msg.id and str(reaction.emoji) in fields.keys():
+                    self.scsubmit_field[user.id] = fields[str(reaction.emoji)]
+                    return True
+                return False
+
+            try:
+                if sub_field is None:  # If we haven't set a default field to submit to (above), send the reaction prompt and wait for a reaction
+                    embed = discord.Embed(title="Submitting a score:", color=0x4EDB23)
+                    msg_text = "\n" + ctx.author.display_name + ": " + str(score)
+                    msg_text += "\n\n**React with the field to submit this score to!**\n"
+                    for emote, field in fields.items():  # Display the emotes for all the fields we can submit to
+                        msg_text += emote + " - " + field + "\n"
+                    embed.description = msg_text
+                    msg = await ctx.send(embed=embed)
+
+                    for emote in fields.keys():  # And react to the message with all the fields we can submit to (two for loops yeehaw)
+                        await msg.add_reaction(emote)
+
+                    reaction, user = await self.bot.wait_for('reaction_add', timeout=60, check=sub_reaction_check)  # Now wait for the user to react
+            except asyncio.TimeoutError:
+                msg_text += "\n\n**Waiting for a reaction timed out - run this command again**"
+                embed.description = msg_text
+                embed.color = 0xDB2323
+                await msg.edit(embed=embed)
+
+            else:  # On reaction (or if we have a field to submit to and never prompted for a reaction), submit the score!
+                if sub_field is None:
+                    sub_field = self.scsubmit_field[ctx.author.id]
+                    print("Reaction-based field set: " + sub_field)
+                print("Attempting submission to field " + sub_field)
+                self.sc_config.update_entry(sub_field, ctx.author.id, score, False)
+
+                if randrange(0, 100) == 0:
+                    scmsg = "You showed us... your ULTIMATE dance... Thank you very much... I can't stop CRYING, BUCKETS of ***TEARS.....***"
+                else:
+                    scmsg = Scoreboard.score_messages[randrange(len(Scoreboard.score_messages))]
+
+                await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard
+                embedd = discord.Embed(title="Score submitted for verification - " + scmsg, description=sub_field + ": " + str(score), colour=0x16E200)
+                await ctx.send(embed=embedd)
 
 
 
@@ -229,30 +269,69 @@ class Scoreboard(commands.Cog):
                 await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
                 return
 
-            field = "Song 1"  # Debug: Submit scores only to the default field
+            fields = self.sc_config.get_fields_emoji()
+            if len(fields) == 1:  # Only one field, just submit to that one by default
+                ver_field = list(fields.values())[0]
+            else:  # Multiple fields - figure out which later:tm:
+                ver_field = None
 
-            #try:
-            if int(score) == -1:  # Score = -1 means score wasn't specified as an argument, so verify the user's unverified score
-                existing_scores = self.sc_config.get_entry(field, member.id)
-                print("Attempting verify of user " + member.display_name + "'s unverified score")
-                print(existing_scores)
-                if existing_scores is False or existing_scores[0] == -1:  # Plot twist: The user doesn't have an unverified score to verify
-                    await ctx.send(embed=utils.format_embed("Error: This user doesn't have an unverified score! Specify their score after their username!", True))
-                    return
+            # Validation method when prompting the user to pick a field to verify scores from
+            def ver_reaction_check(reaction, user):
+                if user == ctx.author and reaction.message.id == msg.id and str(reaction.emoji) in fields.keys():
+                    self.scverify_field[user.id] = fields[str(reaction.emoji)]
+                    return True
+                return False
 
-                else:  # They have an unverified score, set their new verified score to it
-                    score = existing_scores[0]
+            try:
+                if ver_field is None:  # Still need to prompt the user to choose a field to submit to, do it
+                    embed = discord.Embed(title="Verifying score:", color=0x4EDB23)
+                    msg_text = "\n" + ctx.author.display_name
+                    if int(score) == -1:
+                        msg_text += "'s unverified score"
+                    else:
+                        msg_text += ": " + str(score)
+                    msg_text += "\n\n**React with the field to verify this score from!**"
+                    embed.description = msg_text
+                    msg = await ctx.send(embed=embed)
 
-            #except TypeError as e:
-#                print("TypeError in score verification: " + str(e) + "\nWas the specified score an int?")
-#                await ctx.send(embed=utils.format_embed("Error: Specified score \"" + str(score) + "\" is not an int!", True))
-#                return
+                    for emote in fields.keys():  # React to this message with the emotes for all the fields we can submit to
+                        await msg.add_reaction(emote)
 
-            self.sc_config.update_entry(field, member.id, score, True)
+                    reaction, user = await self.bot.wait_for('reaction_add', timeout=60, check=ver_reaction_check)
 
-            await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard
-            embedd = discord.Embed(title="Set user " + member.display_name + "'s verified score", description=field + ": " + str(score), colour=0x16E200)
-            await ctx.send(embed=embedd)
+            except asyncio.TimeoutError:
+                msg_text += "\n\n**Waiting for a reaction timed out - run this command again**"
+                embed.description = msg_text
+                embed.color = 0xDB2323
+                await msg.edit(embed=embed)
+
+            else:  # On valid reaction/we cheated and already know the field to verify:
+                if ver_field is None:
+                    ver_field = self.scverify_field[ctx.author.id]
+                    print("Reaction-based field set: " + ver_field)
+                print("Attempting verification of score from field " + ver_field)
+
+                #try:
+                if int(score) == -1:  # Score = -1 means score wasn't specified as an argument, so verify the user's unverified score
+                    existing_scores = self.sc_config.get_entry(ver_field, member.id)
+                    print("Attempting verify of user " + member.display_name + "'s unverified score")
+                    print(existing_scores)
+                    if existing_scores is False or existing_scores[0] == -1:  # Plot twist: The user doesn't have an unverified score to verify
+                        await ctx.send(embed=utils.format_embed("Error: This user doesn't have an unverified score in field " + ver_field + "! Specify their score after their username!", True))
+                        return
+
+                    else:  # They have an unverified score, set their new verified score to it
+                        score = existing_scores[0]
+
+                #except TypeError as e:
+    #                print("TypeError in score verification: " + str(e) + "\nWas the specified score an int?")
+    #                await ctx.send(embed=utils.format_embed("Error: Specified score \"" + str(score) + "\" is not an int!", True))
+    #                return
+                self.sc_config.update_entry(ver_field, member.id, score, True)
+
+                await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard
+                embedd = discord.Embed(title="Set user " + member.display_name + "'s verified score", description=ver_field + ": " + str(score), colour=0x16E200)
+                await ctx.send(embed=embedd)
 
 
     # Removes a score entry from the scoreboard
@@ -263,7 +342,7 @@ class Scoreboard(commands.Cog):
                 await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
                 return
 
-            field = "Song 1"  # Debug: Submit scores only to the default field
+            field = "Alpha"  # Debug: Submit scores only to the default field
             result = self.sc_config.remove_entry(field, member.id)
             if result:
                 await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard
@@ -309,9 +388,9 @@ class Scoreboard(commands.Cog):
                               color=0xFF7D00)
         embed.set_author(name=self.sc_config.get_disp_name(),
                          url="https://www.youtube.com/watch?v=2ocykBzWDiM")  # Author field: Event name, link
-        embed.set_footer(text="Type !score to submit a score  -  ⚠ scores are unverified")  # Footer: Brief instructions
+        embed.set_footer(text="Type !submit to submit a score  -  \"⚠\" scores are unverified")  # Footer: Brief instructions
 
-        for field, emoji in self.sc_config.get_fields_emoji().items():  # First get a list of fields to display...
+        for emoji, field in self.sc_config.get_fields_emoji().items():  # First get a list of fields to display...
             fieldtext = ""
             entries = self.sc_config.get_entries(field, ctx.guild)  # ...then a list of entries for that field
             entry_members = sorted(entries.items(), key=lambda i: i[1][0], reverse=True)  # Get a list of users, sorted by their entry's highest score

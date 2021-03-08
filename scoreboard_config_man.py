@@ -200,14 +200,14 @@ class ScoreboardConfig:
         return None
 
 
-    # Gets a list of fields for the current scoreboard as an array of {field name, emoji}
+    # Gets a list of fields for the current scoreboard as an array of {emoji, field name}
     def get_fields_emoji(self):
         if self.sc_config is not None:
             fields = self.sc_config.getElementsByTagName("field")
             ret = {}
             for field in fields:
                 if field.hasAttribute("name") and field.hasAttribute("emote"):
-                    ret[field.getAttribute("name")] = field.getAttribute("emote")
+                    ret[field.getAttribute("emote")] = field.getAttribute("name")
             return ret
 
         return None
