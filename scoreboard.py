@@ -33,6 +33,7 @@ class Scoreboard(commands.Cog):
         self.scfield_emote = None
         self.scsubmit_field = {}
         self.scverify_field = {}
+        self.scrm_field = {}
 
         default_scoreboard = config_man.get_default_scoreboard()
         if default_scoreboard is not None:
@@ -342,13 +343,52 @@ class Scoreboard(commands.Cog):
                 await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
                 return
 
-            field = "Alpha"  # Debug: Submit scores only to the default field
-            result = self.sc_config.remove_entry(field, member.id)
-            if result:
-                await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard
-                await ctx.send(embed=utils.format_embed("Removed " + member.display_name + "'s entry from " + field, False))
+            fields = self.sc_config.get_fields_emoji()
+            if len(fields) == 1:
+                rm_field = list(fields.values())[0]
             else:
-                await ctx.send(embed=utils.format_embed("Unable to remove " + member.display_name + "'s entry from " + field, True))
+                rm_field = None
+
+            # Field prompt part 3rd
+            def rm_reaction_check(reaction, user):
+                if user == ctx.author and reaction.message.id == msg.id and str(reaction.emoji) in fields.keys():
+                    self.scrm_field[user.id] = fields[str(reaction.emoji)]
+                    return True
+                return False
+
+            try:
+                if rm_field is None:
+                    embed = discord.Embed(title="Removing a score:", color=0x4EDB23)
+                    msg_text = "\n" + ctx.author.display_name
+                    msg_text += "\n\n**React with the field to remove this user's score from!**\n"
+                    for emote, field in fields.items():
+                        msg_text += emote + " - " + field + "\n"
+                    embed.description = msg_text
+                    msg = await ctx.send(embed=embed)
+
+                    for emote in fields.keys():
+                        await msg.add_reaction(emote)
+
+                    reaction, user = await self.bot.wait_for('reaction_add', timeout=60, check=rm_reaction_check)
+
+            except asyncio.TimeoutError:
+                msg_text += "\n\n**Waiting for a reaction timed out - run this command again**"
+                embed.description = msg_text
+                embed.color = 0xDB2323
+                await msg.edit(embed=embed)
+
+            else:
+                if rm_field is None:
+                    rm_field = self.scrm_field[ctx.author.id]
+                    print("Reaction-based field set: " + rm_field)
+                print("Attempting entry removal from field " + rm_field)
+                result = self.sc_config.remove_entry(rm_field, member.id)
+
+                if result:
+                    await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard
+                    await ctx.send(embed=utils.format_embed("Removed " + member.display_name + "'s entry from " + rm_field, False))
+                else:
+                    await ctx.send(embed=utils.format_embed("Unable to remove " + member.display_name + "'s entry from " + rm_field, True))
 
 
     # Sends a new leaderboard message
