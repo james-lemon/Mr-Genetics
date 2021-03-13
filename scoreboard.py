@@ -427,7 +427,7 @@ class Scoreboard(commands.Cog):
                               description=self.sc_config.get_desc() + "\n.",  # Description
                               color=0xFF7D00)
         embed.set_author(name=self.sc_config.get_disp_name(),
-                         url="https://www.youtube.com/watch?v=2ocykBzWDiM")  # Author field: Event name, link
+                         url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")  # Author field: Event name, link
         embed.set_footer(text="Type !submit to submit a score  -  \"⚠\" scores are unverified")  # Footer: Brief instructions
 
         for emoji, field in self.sc_config.get_fields_emoji().items():  # First get a list of fields to display...
