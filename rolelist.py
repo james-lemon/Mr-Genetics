@@ -19,6 +19,11 @@ class RoleList(commands.Cog):
             id_list = ids.split(';')
             if id_list[0] != '-1':  # Only add valid category messages to the rolelist messages list: -1 means a category doesn't have a rolelist message
                 self.rolelist_messages[(int(id_list[0]), int(id_list[1]))] = category
+
+        for category, ids in config_man.categoriesAlt.items():  # Do the same for the alt rolelist messages
+            id_list = ids.split(';')
+            if id_list[0] != '-1':
+                self.rolelist_messages[(int(id_list[0]), int(id_list[1]))] = category
     
         # Temporary tracking variables for the addrole command - Helps persist some data between the command being run and the emoji reaction to confirm it
         self.addrole_message = [0, 0]
@@ -321,6 +326,34 @@ class RoleList(commands.Cog):
             msg = config_man.set_category_description(category, description)
             await ctx.send(embed=utils.format_embed(msg, False))
 
+    # Sets the alt rolelist message for a role
+    @commands.command()
+    async def altrolemsg(self, ctx, category, role: discord.Role, msgid):
+            if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and utils.authorize_admin(ctx.guild, ctx.author):  # First: Authorize an admin is running this command
+
+                # Check to make sure the specified message exists
+                msg = str(msgid).split("-")
+                if len(msg) != 2:
+                    await ctx.send(embed=utils.format_embed("Invalid Message ID specified!\nMake sure you use `Shift + Hover Message -> Copy ID` to get the ID.", True))
+                    return
+                print("Specified channel: " + msg[0] + ", message: " + msg[1])
+                try:
+                    message = await self.bot.get_channel(int(msg[0])).fetch_message(int(msg[1]))
+                    assert message is not None
+                except discord.errors.NotFound:
+                    print("Received 404 trying to find message with ID " + str(msgid))
+                    await ctx.send(embed=utils.format_embed("Error getting the specified message ID!\nMake sure you use `Shift + Hover Message -> Copy ID` to get the ID.", True))
+                    return
+
+                # The message should exist at this point, add a reaction to it and set it as the category's alt message
+                duck_emote = str(get(ctx.guild.emojis, name="discoduck"))
+                if duck_emote == "None":
+                    duck_emote = "🦆"
+                await message.add_reaction(duck_emote)
+
+                ret = config_man.set_category_alt_message(category, msg[0], msg[1], role)
+                await ctx.send(embed=utils.format_embed(ret, False))
+
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
@@ -330,6 +363,26 @@ class RoleList(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload):
         await RoleList.handle_reaction(self, payload, False)
+
+
+    # If any of the rolelist messages are reacted to, this routine checks if the reacted emote is a role emote, and updates user roles if needed
+    async def process_rolelist_reaction(self, payload, guild, category, roles, reaction_added, member):
+        for role_id, role_emoji in roles.items():  # Now find the role to add - Go through each role until we find the one with the emoji the member reacted with
+            # print(payload.emoji.name, ", ", role_emoji)
+            if payload.emoji.name == role_emoji[0]:  # Once we find it, toggle this role on the user!
+                role = get(guild.roles, id=int(role_id))
+
+                if config_man.is_role_assignable(category, str(role.id)):  # Check to make sure we are allowed to assign this role to regular users!
+                    if not reaction_added:  # Member removed this reaction, take the role away!
+                        print("Removing role " + role.name + " from member " + member.display_name)
+                        await member.remove_roles(role, reason="Self-removed via bot (by reaction)")
+                        # print("Removed role")
+                    else:  # Member added the reaction, add the role!
+                        print("Adding role " + role.name + " to member " + member.display_name)
+                        await member.add_roles(role, reason="Self-assigned via bot (by reaction)")
+                        # print("Added role ")
+                    return True  # Done adding this role, don't process anything else
+        return False
 
 
     # Handles the add and remove reaction events for ALL messages on servers the bot is in
@@ -350,22 +403,20 @@ class RoleList(commands.Cog):
                     category_ids = category_message.split(';')
                     if payload.channel_id == int(category_ids[0]) and payload.message_id == int(category_ids[1]):  # Did we find the category?
                         roles = config_man.get_roles_emoji(category)  # Grab the roles in the category message the member reacted on
+                        if await RoleList.process_rolelist_reaction(self, payload, guild, category, roles, reaction_added, member):  # Try checking if the reacted emote belongs to a role, if it does update the user and return
+                            return
 
-                        for role_id, role_emoji in roles.items():  # Now find the role to add - Go through each role until we find the one with the emoji the member reacted with
-                            # print(payload.emoji.name, ", ", role_emoji)
-                            if payload.emoji.name == role_emoji[0]:  # Once we find it, toggle this role on the user!
-                                role = get(guild.roles, id=int(role_id))
+                print("lol")
+                for category, category_message in config_man.categoriesAlt.items():  # Finally, see if the message we reacted to was in our list of ALT category messages
+                    print(category + ", " + category_message)
+                    category_ids = category_message.split(';')
+                    if payload.channel_id == int(category_ids[0]) and payload.message_id == int(category_ids[1]):  # Did we find the category?
+                        print("Found alt message")
+                        roles = config_man.get_alt_role_emoji(category)  # Grab the roles in the category message the member reacted on
+                        print(roles)
+                        if await RoleList.process_rolelist_reaction(self, payload, guild, category, roles, reaction_added, member):  # Try checking if the reacted emote belongs to a role, if it does update the user and return
+                            return
 
-                                if config_man.is_role_assignable(category, str(role.id)):  # Check to make sure we are allowed to assign this role to regular users!
-                                    if not reaction_added:  # Member removed this reaction, take the role away!
-                                        print("Removing role " + role.name + " from member " + member.display_name)
-                                        await member.remove_roles(role, reason="Self-removed via bot (by reaction)")
-                                        # print("Removed role")
-                                    else:  # Member added the reaction, add the role!
-                                        print("Adding role " + role.name + " to member " + member.display_name)
-                                        await member.add_roles(role, reason="Self-assigned via bot (by reaction)")
-                                        # print("Added role ")
-                                    return  # Done adding this role, don't process anything else
 
         # Reaction processing 2: Add/remove role reactions - Only available to admins!
         if utils.authorize_admin(guild, member):
@@ -414,6 +465,7 @@ class RoleList(commands.Cog):
                 self.removerole_message = [0, 0]  # Don't forget to blank out the removerole message so we stop listening for reactions on the message we just reacted on!
 
             if payload.channel_id == self.setadmin_message[0] and payload.message_id == self.setadmin_message[1] and payload.emoji.name == '🔒':  # Check for reactions on the latest "setadminrole" message
+                print("Reaction: setadmin message match")
                 set_result = config_man.set_admin_role(self.setadmin_role)
                 if set_result is True:
                     msg = await self.bot.get_channel(payload.channel_id).fetch_message(payload.message_id)

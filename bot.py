@@ -26,7 +26,8 @@ bot = commands.Bot(command_prefix='!', case_insensitive=True, intents=intents)
 
 bot.remove_command('help')  # Remove the default help command, imma make my own lel
 
-bot.add_cog(RoleList(bot))
+rolelist = RoleList(bot)
+bot.add_cog(rolelist)
 bot.add_cog(Scoreboard(bot))
 
 @bot.event
@@ -40,14 +41,13 @@ async def on_ready():
 @bot.command()
 async def setadminrole(ctx, role: discord.Role):
     if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and utils.authorize_admin(ctx.guild, ctx.author):  # First: Authorize an admin is running this command
-        global setadmin_message, setadminrole
         if role is not None:
             embed = discord.Embed(title="Will set the admin role", colour=0xFF7D00)  # Create an embed, set it's title and color
             embed.description = "**Role:** " + role.name + "\n\nUsers without this role can't edit or send the role list, and can only react to it for roles.\n\n**Ensure you have this role and react with 🔒 to confirm!**"
             msg = await ctx.send(embed=embed)
-            setadmin_message[0] = msg.channel.id
-            setadmin_message[1] = msg.id
-            setadmin_role = str(role.id)
+            rolelist.setadmin_message[0] = msg.channel.id
+            rolelist.setadmin_message[1] = msg.id
+            rolelist.setadmin_role = str(role.id)
             await msg.add_reaction('🔒')
             print("Sent setadminrole message: ", msg.id)
         else:

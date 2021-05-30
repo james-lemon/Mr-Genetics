@@ -64,8 +64,12 @@ class Scoreboard(commands.Cog):
     @commands.command()
     async def scunload(self, ctx):
         if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and utils.authorize_admin(ctx.guild, ctx.author):  # Prevent this from running outside of a guild or by non-admins:
+            if not self.sc_config.is_scoreboard_loaded():
+                await ctx.send(embed=utils.format_embed("No scoreboard is currently loaded, nothing to unload!", Flase))
+                return
             self.sc_config.save_sc_config() #Don't nuke ur data kids, triple-check that you've saved to disk before loading a new config
             self.sc_config.unload_sc_config()
+            config_man.set_default_scoreboard("")
             await ctx.send(embed=utils.format_embed("Unloaded scoreboard - no scoreboard is active now", False))
 
 

@@ -78,10 +78,13 @@ class ScoreboardConfig:
     # Unloads the current scoreboard config (so no config is currently loaded)
     # Note: DOES NOT SAVE THE CONFIG BEFORE UNLOADING!
     def unload_sc_config(self):
-        print("Unloading scoreboard config " + self.sc_name)
-        self.sc_dom = None
-        self.sc_config = None
-        self.sc_name = None
+        if self.sc_config is not None:
+            print("Unloading scoreboard config " + self.sc_name)
+            self.sc_dom = None
+            self.sc_config = None
+            self.sc_name = None
+        else:
+            print("Tried to unload a config when no config was loaded!")
 
 
 

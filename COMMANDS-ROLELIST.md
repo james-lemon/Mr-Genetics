@@ -57,6 +57,13 @@ Deletes the old role list messages and sends new ones to whatever channel you ru
 
 ---
 
+### !altrolemsg "Category" "Role" "Message ID"
+Each category can have an extra "rolelist" message associated with it, where reactions for roles are listened to.
+This is useful for integrating "react for role" functionality into messages not created by the duck.
+To use: Shift + Right click a message in discord -> Copy ID. Use this string for the "Message ID" argument.
+
+---
+
 ### !sortcategory "Category"
 Sorts the roles in "Category" by alphabetical order - Perfect for organizing your last-minute role additions!
 

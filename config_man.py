@@ -10,13 +10,14 @@ from xml.dom import minidom
 from xml.dom.minidom import parse
 import xml.dom.minidom
 import codecs
+import sys
 
 
 # The config is organized like this:
 # <config>
 #   <admin_role>admin role id</admin_role>
 #   <scoreboard>Default scoreboard to load</scoreboard>
-#   <category name="Category name", listeningChannel="channel ID", listeningMessage="message ID", description="optional description">
+#   <category name="Category name", listeningChannel="channel ID", listeningMessage="message ID", altChannel="channel ID", altMessage="message ID", altRole="Role id", description="optional description">
 #       <role name="Role id" dispName="Role display name" emoji="Unicode emoji/Custom emoji name" usesCustomEmoji="True/False", assignable="True/False">Role Description</role>
 #       <role>...
 #   </category>
@@ -36,20 +37,26 @@ def save_config():
 
 # Sets the categories variable to a dict containing all categories as keys, and the channel/message IDs to listen on as values
 def get_categories():
-    global categories
-    ret = {}
+    global categories, categoriesAlt
+    ret = {}  # Why?
+    retAlt = {}
 
     configCategories = config.getElementsByTagName("category")  # First iterate through all the categories in the file...
     for category in configCategories:
         if category.hasAttribute("name"):  # Check if this category has a name
             if category.hasAttribute("listeningChannel") and category.hasAttribute("listeningMessage"):  # If it also has a channel/message to listen for, add them too
                 ret[category.getAttribute("name")] = category.getAttribute("listeningChannel") + ";" + category.getAttribute("listeningMessage")
+
+                if category.hasAttribute("altChannel") and category.hasAttribute("altMessage"):  # If this category also has an alt message specified, add it to the alt categories as well
+                    retAlt[category.getAttribute("name")] = category.getAttribute("altChannel") + ";" + category.getAttribute("altMessage")
+
             else:  # Otherwise, set the channel/message fields to -1
                 print("Category", category.getAttribute("name"), "doesn't have listeningMessage/Channel attributes (and thus can't track a message for reactions to assign these roles!)\nRun the role list command to generate a role list message to fix this!")
                 ret[category.getAttribute("name")] = "-1;-1"
         else:
             print("Config warning: Category in config is missing a name and won't be loaded!")
     categories = ret
+    categoriesAlt = retAlt
 
 
 # Returns a dict with all of the categories in the config and their descriptions (or some placeholder text, if they don't have one)
@@ -99,6 +106,24 @@ def get_roles_emoji(category):
 
     else:
         print("Error: Attempt to get roles from non-existent category \"", category, "\"")
+        return False
+
+
+# Alternate version of get_roles_emoji to grab the emoji used the role for a category's alt message
+def get_alt_role_emoji(category):
+    global categoriesAlt
+    ret = {}
+    if category in categories:  # If the category we're requesting is in our valid categories list, find that category in the config
+        for configCategory in config.getElementsByTagName("category"):
+            if configCategory.hasAttribute("name") and configCategory.getAttribute("name") == category and configCategory.hasAttribute("altRole"):  # Found the category element, now grab the roles from it
+
+                for configRole in configCategory.getElementsByTagName("role"):
+                    if configRole.hasAttribute("name") and configRole.getAttribute("name") == configCategory.getAttribute("altRole") and configRole.hasAttribute("emoji") and configRole.hasAttribute("usesCustomEmoji") and configRole.hasAttribute("assignable") and configRole.getAttribute("assignable") == "True":  # Only add roles with a name, emoji and assignable="True" set
+                        ret[configRole.getAttribute("name")] = [configRole.getAttribute("emoji"), configRole.getAttribute("usesCustomEmoji")]  # Grab this role from the config and its emoji (if it has both attributes), then add it to the dict to return
+        return ret
+
+    else:
+        print("Error: Attempt to get alt role from non-existent alt category \"", category, "\" - does this category have an alt message/role set?")
         return False
 
 
@@ -224,6 +249,22 @@ def set_category_description(category, description):
     save_config()
 
 
+# Sets the message and channel ids for a category in the config
+def set_category_alt_message(category, channel_id, message_id, role):
+    global categoriesAlt
+    categoriesAlt[category] = channel_id + ';' + message_id
+    for configCategory in config.getElementsByTagName("category"):
+        if configCategory.hasAttribute("name") and configCategory.getAttribute("name") == category:
+            configCategory.setAttribute("altChannel", str(channel_id))
+            configCategory.setAttribute("altMessage", str(message_id))
+            configCategory.setAttribute("altRole", str(role.id))
+            save_config()
+            print("Set category \"" + category + "\"'s alt rolelist message for role\"" + role.name + "\"")
+            return "Set category \"" + category + "\"'s alt rolelist message for role\"" + role.name + "\""
+    print("Failed to set category alt rolelist message: Category \"", category, "\"doesn't exist!")
+    return "Failed to set category alt rolelist message: Category \"", category, "\"doesn't exist!"
+
+
 # Sorts roles in a category by alphabetical order
 def sort_category(category):
     if category in categories:  # Find this category in the config
@@ -277,9 +318,9 @@ def set_admin_role(role_id):
 def get_default_scoreboard():
     elements = config.getElementsByTagName("scoreboard")
     if len(elements) >= 1:
-        scoreboard = elements[0].firstChild.nodeValue
-        if scoreboard is not None:
-            return scoreboard
+        scoreboard = elements[0].firstChild
+        if scoreboard is not None and scoreboard.nodeValue is not None:
+            return scoreboard.nodeValue
     return None
 
 
@@ -310,9 +351,14 @@ except FileNotFoundError:  # No config file? Create one and set its root element
     dom = minidom.Document()
     root = dom.createElement("config")
     dom.appendChild(root)
+except ExpatError as e:  # Our formatting is screwed
+    print("Error parsing config.xml, your config formatting is corrupted.\n\nExpatError: " + str(e))
+    sys.exit(2)
+
 
 config = dom.documentElement
 categories = None  # Don't forget to initialize the category list, too!
+categoriesAlt = None
 get_categories()
 
 
