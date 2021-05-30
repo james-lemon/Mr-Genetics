@@ -24,6 +24,12 @@ class Scoreboard(commands.Cog):
         "Your scores are on FIRE!",
         "Can I call you a dancin' MASTER?",
         "Wow, your steps are AMAZIN'!",
+        "Yeah, I KNEW you could do it!",
+        "Wow, you're awesome!",
+        "Way to step it up!",
+        "Your skills are UN-be-lieveable!",
+        "Perfection is your first, last, AND middle name!",
+
     )
 
     def __init__(self, bot):
@@ -51,6 +57,16 @@ class Scoreboard(commands.Cog):
                 config_man.set_default_scoreboard(name)
             else:
                 await ctx.send(embed=utils.format_embed("Error: Scoreboard config not found: " + name, True))
+
+
+
+    # Tries unloading the current scoreboard config (so no config is active)
+    @commands.command()
+    async def scunload(self, ctx):
+        if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and utils.authorize_admin(ctx.guild, ctx.author):  # Prevent this from running outside of a guild or by non-admins:
+            self.sc_config.save_sc_config() #Don't nuke ur data kids, triple-check that you've saved to disk before loading a new config
+            self.sc_config.unload_sc_config()
+            await ctx.send(embed=utils.format_embed("Unloaded scoreboard - no scoreboard is active now", False))
 
 
 
@@ -427,7 +443,7 @@ class Scoreboard(commands.Cog):
                               description=self.sc_config.get_desc() + "\n.",  # Description
                               color=0xFF7D00)
         embed.set_author(name=self.sc_config.get_disp_name(),
-                         url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")  # Author field: Event name, link
+                         url="https://www.youtube.com/watch?v=PGNiXGX2nLU")  # Author field: Event name, link
         embed.set_footer(text="Type !submit to submit a score  -  \"⚠\" scores are unverified")  # Footer: Brief instructions
 
         for emoji, field in self.sc_config.get_fields_emoji().items():  # First get a list of fields to display...

@@ -90,6 +90,7 @@ async def help(ctx):
                             "`setcategorydescription \"Category\" Description:` Sets a category's description (optional)\n\n\n" \
                             "`scnew \"Fileame\" Description:` Creates a new scoreboard\n\n" \
                             "`scload \"Filename\":` Loads a saved scoreboard from file\n\n" \
+                            "`scunload:` Unloads the current scoreboard (disables score submissions)\n\n" \
                             "`scoreboard:` Sends a new scoreboard message\n\n" \
                             "`scdisplayname Name:` Sets a scoreboard's display name\n\n" \
                             "`scdescription Desc:` Sets a scoreboard's description\n\n" \

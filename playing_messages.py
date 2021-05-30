@@ -51,6 +51,7 @@ status_messages = (
     "Million Hits",
     "SSAMBA",
     "Samba de Amigo",
+    "Reflec Beat",
     
     "Quick & Crash",  # Then games...
     "Roblox",
@@ -126,6 +127,7 @@ status_messages = (
     "with pudding",
     "with cats on cabs",
     "with cats, on cabs",
+    "with cabs on cats?!",
     "Vib-Rhyddm",
     "Xuxa",
     "CS rhythm games at home",
@@ -133,10 +135,13 @@ status_messages = (
     "taco bell",
     "with cursed fanfic websites",
     "on cursed cons",
+    "on cursed cabs",
     "with cursed hardware",
     "Pizza Vending Machine Simulator 2020",
     "bright and tight arcade games",
     "in the 90s",
+    "with the cool girls",
+    "with photoshop",
     )
 
 

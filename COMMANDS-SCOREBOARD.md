@@ -10,6 +10,7 @@ Scoreboards are stored in individual config files under `scoreboards/` - one mus
 
  - `!scnew <"name"> (description...)` - Creates a scoreboard config
  - `!scload <"name">` - Loads a scoreboard config
+ - `!scunload` - Unloads the current scoreboard config
  - `!scdisplayname <name...>` - Sets a scoreboard's display name
  - `!scdescription <desc...>` - Sets a scoreboard's description
  - `!scoreboard` - Sends the scoreboard message to the current channel - Any new fields, scores, etc will be edited into this new message!
