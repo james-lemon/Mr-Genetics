@@ -17,15 +17,20 @@ import codecs
 # The scoreboard config is organized like this - each individual event has it's own config file so you can save old scoreboards for posterity.
 # (Note: The event name is inferred from the config file's name)
 # <scoreboard>
-#   <submit_enabled>True/False</submit_enabled>
 #   <display_name>name</display_name>
-#   <description>event description</description>
-#   <scoreboard_message channel="" message=""/>
-#   <field name="Field name" type="Field type" emote="">
-#       <entry verified_value=score, unverified_value=score2>Player name</role>
-#       <entry>...
-#   </field>
-#   <category>...
+#   <description>event description</description> (Probably gonna get deprecated)
+#   <activeplayers><player name="name" division="div" /></activeplayers>
+#   <divisions>
+#      <division name="", desc="">
+#           <scoreboard_message channel="" message=""/>
+#          <field name="Field name" type="Field type" emote="">
+#              <entry verified_value=score, unverified_value=score2>Player name</role>
+#              <entry>...
+#          </field>
+#           <field...>
+#      </division>
+#       <division...>
+#   </divisions>
 # </scoreboard>
 
 class ScoreboardConfig:
@@ -33,6 +38,7 @@ class ScoreboardConfig:
         print("Initializing scoreboard_config_man...")
         self.sc_dom = None
         self.sc_config = None
+        self.sc_divisions = None
         self.sc_name = None
 
         # Create our scoreboard config directory if it doesn't exist
@@ -56,8 +62,19 @@ class ScoreboardConfig:
             self.sc_dom = xml.dom.minidom.parse("scoreboards/" + name + ".xml")
             self.sc_config = self.sc_dom.documentElement
             self.sc_name = name
+
+            divisions_elems = self.sc_config.getElementsByTagName("divisions")  # Grab the divisions element, or make a new one
+            if len(divisions_elems) == 0:
+                divisions = self.sc_dom.createElement("divisions")
+                self.sc_config.appendChild(divisions)
+            else:
+                divisions = divisions_elems[0]
+
+            self.sc_divisions = divisions  # Store the divisions element for quick reference
+
             print("Loaded!")
             return 0
+
         except FileNotFoundError:  # No config file? Make one boi
             if allow_create:
                 print("Scoreboard config not found, but creation of a new config is enabled. Attempting creation...")
@@ -68,6 +85,7 @@ class ScoreboardConfig:
                 self.sc_name = name
                 self.set_desc(desc)
                 return 1
+
             else:
                 print("Error: Scoreboard config file not found!")
                 self.unload_sc_config()
@@ -167,6 +185,54 @@ class ScoreboardConfig:
             print("Set scoreboard description to \"" + description + "\"")
             self.save_sc_config()
 
+
+    # Returns a division element with name <name> if it exists, or None if it doesn't
+    def get_division(self, name):
+        div_elems = self.sc_divisions.getElementsByTagName("division")
+        for div_elem in div_elems:
+            if div_elem.hasAttribute("name") and div_elem.getAttribute("name") == name:
+                return div_elem
+        return None
+
+
+    # Creates a new scoreboard division
+    def div_new(self, name):
+        if self.sc_config is not None:  # Make sure we have a config loaded
+            if self.get_division(name) is not None:  # Does a division with this name already exist?
+                print("Error creating division \"" + name + "\" - a division with this name already exists!")
+                return False
+
+            divs_elems = self.sc_config.getElementsByTagName("divisions")  # Otherwise, go grab our divisions element
+            if len(divs_elems) > 0:
+                div = self.sc_dom.createElement("division")  # ...and add a new division element to it
+                div.setAttribute("name", name)
+                divs_elems[0].appendChild(div)
+                print("Created scoreboard division \"" + name + "\".")
+                self.save_sc_config()
+                return True
+            else:
+                print("Unable to get divisions element to add a division")
+                return None
+
+
+    # Removes a scoreboard division
+    def div_remove(self, name):
+        if self.sc_config is not None:
+            div = self.get_division(name)
+            if div is not None:  # Does the division we want to remove exist?
+                divs_elems = self.sc_config.getElementsByTagName("divisions")  # Grab our divisions element
+                if len(divs_elems) > 0:
+                    divs_elems[0].removeChild(div)  # And remove the division
+                    print("Deleted scoreboard division \"" + name + "\"")
+                    self.save_sc_config()
+                    return True
+                else:
+                    print("Unable to get divisions element to remove a division")
+                    return None
+
+            else:  # Can't delete a division that doesn't exist
+                print("Error deleting division \"" + name + "\" - division doesn't exist!")
+                return False
 
 
     # Gets the channel/message ID of the scoreboard message

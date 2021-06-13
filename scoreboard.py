@@ -29,6 +29,10 @@ class Scoreboard(commands.Cog):
         "Way to step it up!",
         "Your skills are UN-be-lieveable!",
         "Perfection is your first, last, AND middle name!",
+        "Total ability UP!",
+        "Showers are sexy! Take one today!",
+        "*Does a little jig*",
+        "Hell yeah, pizza time.",
 
     )
 
@@ -116,6 +120,35 @@ class Scoreboard(commands.Cog):
             await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard, BOI
             await ctx.send(embed=utils.format_embed("Set scoreboard description to " + desc, False))
 
+
+    # Creates a new scoreboard division
+    @commands.command()
+    async def scnewdiv(self, ctx, name, *, desc=""):
+        if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and utils.authorize_admin(ctx.guild, ctx.author):  # Prevent this from running outside of a guild or by non-admins:
+            if not self.sc_config.is_scoreboard_loaded():
+                await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
+                return
+            if self.sc_config.div_new(name, desc):
+                await ctx.send(embed=utils.format_embed("Created a new division \"" + name + "\"!", False))
+                return
+            else:
+                await ctx.send(embed=utils.format_embed("Error creating division - division \"" + name + "\" already exists!", True))
+                return
+
+
+    # Removes a scoreboard division
+    @commands.command()
+    async def scremovediv(self, ctx, name):
+        if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and utils.authorize_admin(ctx.guild, ctx.author):  # Prevent this from running outside of a guild or by non-admins:
+            if not self.sc_config.is_scoreboard_loaded():
+                await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
+                return
+            if self.sc_config.div_remove(name):
+                await ctx.send(embed=utils.format_embed("Removed division \"" + name + "\".", False))
+                return
+            else:
+                await ctx.send(embed=utils.format_embed("Error removing division - division \"" + name + "\" doesn't exist!", True))
+                return
 
 
     # Creates or updates a scoreboard field

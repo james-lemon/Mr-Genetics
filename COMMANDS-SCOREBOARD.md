@@ -1,6 +1,10 @@
 ## Scoreboard Command Usage
 
-Scoreboards are stored in individual config files under `scoreboards/` - one must be loaded for scoreboards to be functional!
+**Scoreboards** store all the data for an overall event - all the scores on all the leaderboards. They're stored in individual config files under `scoreboards/` - one must be loaded for scoreboards to be functional!
+
+Scoreboards divided into **divisions** - individual leaderboards with their own sets of fields players submit scores to (you would use these for multiple divisions in a tournament, like a harder song list for experienced players and an easier song list for novices.)
+
+Each division has a number of **fields** for individual songs, games, etc. Players directly submit scores to these, and admins can later verify them.
 
 *Formatting note: \<required argument> (optional argument) "Argument needs quotes"*
 
@@ -13,8 +17,16 @@ Scoreboards are stored in individual config files under `scoreboards/` - one mus
  - `!scunload` - Unloads the current scoreboard config
  - `!scdisplayname <name...>` - Sets a scoreboard's display name
  - `!scdescription <desc...>` - Sets a scoreboard's description
- - `!scoreboard` - Sends the scoreboard message to the current channel - Any new fields, scores, etc will be edited into this new message!
+ - `!scoreboard` - Sends the scoreboard messages to the current channel - Any new fields, scores, etc will be edited into this new message!
  
+---
+
+### Division commands
+
+- `!scnewdiv <"name"> (description)` - Creates a new scoreboard division
+- `!scremovediv <"name">` - Removes an existing scoreboard division
+- `!scdivdescription <"name"> <description>` - Sets a division's description
+
 ---
 
 ### Field commands
