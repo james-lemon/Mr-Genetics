@@ -21,7 +21,7 @@ import codecs
 #   <description>event description</description> (Probably gonna get deprecated)
 #   <activeplayers><player name="name" division="div" /></activeplayers>
 #   <divisions>
-#      <division name="", desc="">
+#      <division name="", desc="", emote="">
 #           <scoreboard_message channel="" message=""/>
 #          <field name="Field name" type="Field type" emote="">
 #              <entry verified_value=score, unverified_value=score2>Player name</role>
@@ -84,6 +84,8 @@ class ScoreboardConfig:
                 self.sc_config = self.sc_dom.documentElement
                 self.sc_name = name
                 self.set_desc(desc)
+                self.sc_divisions = self.sc_dom.createElement("divisions")
+                self.sc_config.appendChild(self.sc_divisions)
                 return 1
 
             else:
@@ -160,8 +162,8 @@ class ScoreboardConfig:
     def get_desc(self):
         if self.sc_config is not None:
             elements = self.sc_config.getElementsByTagName("description")
-            if len(elements) >= 1 and elements[0].firstChild.nodeValue is not None:
-                return elements[0].firstChild.nodeValue
+            if len(elements) >= 1 and elements[0].firstChild is not None:
+                    return elements[0].firstChild.nodeValue
         return ""
 
 
@@ -188,15 +190,27 @@ class ScoreboardConfig:
 
     # Returns a division element with name <name> if it exists, or None if it doesn't
     def get_division(self, name):
-        div_elems = self.sc_divisions.getElementsByTagName("division")
-        for div_elem in div_elems:
-            if div_elem.hasAttribute("name") and div_elem.getAttribute("name") == name:
-                return div_elem
+        if self.sc_config is not None:
+            div_elems = self.sc_divisions.getElementsByTagName("division")
+            for div_elem in div_elems:
+                if div_elem.hasAttribute("name") and div_elem.getAttribute("name") == name:
+                    return div_elem
+        return None
+
+    # Returns a list of divisions and their respective emojis
+    def get_divisions(self):
+        if self.sc_config is not None:
+            div_elems = self.sc_divisions.getElementsByTagName("division")
+            ret = {}
+            for div_elem in div_elems:
+                if div_elem.hasAttribute("name") and div_elem.hasAttribute("emote"):
+                    ret[div_elem.getAttribute("emote")] = div_elem
+            return ret
         return None
 
 
     # Creates a new scoreboard division
-    def div_new(self, name):
+    def div_new(self, name, desc=""):
         if self.sc_config is not None:  # Make sure we have a config loaded
             if self.get_division(name) is not None:  # Does a division with this name already exist?
                 print("Error creating division \"" + name + "\" - a division with this name already exists!")
@@ -206,6 +220,8 @@ class ScoreboardConfig:
             if len(divs_elems) > 0:
                 div = self.sc_dom.createElement("division")  # ...and add a new division element to it
                 div.setAttribute("name", name)
+                div.setAttribute("desc", desc)
+                div.setAttribute("emote", "🤟")
                 divs_elems[0].appendChild(div)
                 print("Created scoreboard division \"" + name + "\".")
                 self.save_sc_config()
@@ -264,9 +280,9 @@ class ScoreboardConfig:
 
 
     # Gets a list of fields for the current scoreboard as an array of {field name,value}
-    def get_fields(self):
+    def get_fields(self, div):
         if self.sc_config is not None:
-            fields = self.sc_config.getElementsByTagName("field")
+            fields = div.getElementsByTagName("field")
             ret = {}
             for field in fields:
                 if field.hasAttribute("name") and field.hasAttribute("type"):
@@ -279,9 +295,10 @@ class ScoreboardConfig:
 
 
     # Gets a list of fields for the current scoreboard as an array of {emoji, field name}
-    def get_fields_emoji(self):
+    def get_fields_emoji(self, div):
         if self.sc_config is not None:
-            fields = self.sc_config.getElementsByTagName("field")
+            # print(div.toprettyxml())
+            fields = div.getElementsByTagName("field")
             ret = {}
             for field in fields:
                 if field.hasAttribute("name") and field.hasAttribute("emote"):
@@ -292,9 +309,9 @@ class ScoreboardConfig:
 
 
     # Adds or edits a field in the config
-    def update_field(self, name, type, emoji):
+    def update_field(self, div, name, type, emoji):
         if self.sc_config is not None:
-            field_elems = self.sc_config.getElementsByTagName("field")
+            field_elems = div.getElementsByTagName("field")
             field = None
             for prelim_field in field_elems:
                 if prelim_field.hasAttribute("name") and prelim_field.getAttribute("name") == name:
@@ -305,7 +322,7 @@ class ScoreboardConfig:
             if field is None:  # Didn't find a field above, make a new one
                 print("New field")
                 field = self.sc_dom.createElement("field")
-                self.sc_config.appendChild(field)
+                div.appendChild(field)
 
             field.setAttribute("name", name)
             field.setAttribute("type", type)
@@ -318,12 +335,12 @@ class ScoreboardConfig:
 
 
     # Deletes a field in the config
-    def remove_field(self, name):
+    def remove_field(self, div, name):
         if self.sc_config is not None:
-            field_elems = self.sc_config.getElementsByTagName("field")
+            field_elems = div.getElementsByTagName("field")
             for prelim_field in field_elems:
                 if prelim_field.hasAttribute("name") and prelim_field.getAttribute("name") == name:
-                    self.sc_config.removeChild(prelim_field)
+                    div.removeChild(prelim_field)
                     self.save_sc_config()
                     return True
             return False
@@ -343,9 +360,9 @@ class ScoreboardConfig:
 
 
     # Adds or updates a score entry
-    def update_entry(self, field, user, score, verify):
+    def update_entry(self, div, field, user, score, verify):
         if self.sc_config is not None:
-            field_elems = self.sc_config.getElementsByTagName("field")  # Find the field to add to
+            field_elems = div.getElementsByTagName("field")  # Find the field to add to
             for field_elem in field_elems:
                 if field_elem.hasAttribute("name") and field_elem.getAttribute("name") == field:
 
@@ -377,9 +394,9 @@ class ScoreboardConfig:
 
 
     # Gets a score entry
-    def get_entry(self, field, user):
+    def get_entry(self, div, field, user):
         if self.sc_config is not None:
-            field_elems = self.sc_config.getElementsByTagName("field")  # Find the field to read from
+            field_elems = div.getElementsByTagName("field")  # Find the field to read from
             for field_elem in field_elems:
                 if field_elem.hasAttribute("name") and field_elem.getAttribute("name") == field:
 
@@ -396,9 +413,9 @@ class ScoreboardConfig:
 
 
     # Gets the entries for a field, returned as {username, (score, verified)}
-    def get_entries(self, field, guild):
+    def get_entries(self, div, field, guild):
         if self.sc_config is not None:
-            field_elems = self.sc_config.getElementsByTagName("field")  # Find the field to read from
+            field_elems = div.getElementsByTagName("field")  # Find the field to read from
             for field_elem in field_elems:
                 if field_elem.hasAttribute("name") and field_elem.getAttribute("name") == field:
                     entries = {}
@@ -425,9 +442,9 @@ class ScoreboardConfig:
 
 
     # Adds or updates a score entry
-    def remove_entry(self, field, user):
+    def remove_entry(self, div, field, user):
         if self.sc_config is not None:
-            field_elems = self.sc_config.getElementsByTagName("field")  # Find the field to remove from
+            field_elems = div.getElementsByTagName("field")  # Find the field to remove from
             for field_elem in field_elems:
                 if field_elem.hasAttribute("name") and field_elem.getAttribute("name") == field:
 

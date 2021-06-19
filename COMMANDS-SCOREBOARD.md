@@ -25,7 +25,6 @@ Each division has a number of **fields** for individual songs, games, etc. Playe
 
 - `!scnewdiv <"name"> (description)` - Creates a new scoreboard division
 - `!scremovediv <"name">` - Removes an existing scoreboard division
-- `!scdivdescription <"name"> <description>` - Sets a division's description
 
 ---
 
@@ -33,8 +32,8 @@ Each division has a number of **fields** for individual songs, games, etc. Playe
 
 Scoreboards are made up of configurable fields - these are individual goals/challenges for users to compete on!
 
- - `scfield <name> <type>` - Creates or updates a field (type argument is currently unused)
- - `scremovefield <name>` - Removes a field
+ - `scfield <"division"> <"name"> <type>` - Creates or updates a field (type argument is currently unused)
+ - `scremovefield <"division"> <"name">` - Removes a field
 
 ---
 
@@ -49,5 +48,5 @@ Admins can verify a user-submitted score by running `!verify`.
 Running any of these commands will (in the future) prompt the user to react to an emote to choose which field to submit their score under.
 
  - `!submit (score)` - Submits an unverified score for your username (can be run by non-admins)
- - `!verify <user> (score)` - If `score` is specified, `user`'s score will be set to that score. Otherwise, this command will verify their unverified score (if they have one)
- - `!scremoveentry <user>` - Removes `user`'s score from a field.
+ - `!verify <"division"> <"user"> (score)` - If `score` is specified, `user`'s score will be set to that score. Otherwise, this command will verify their unverified score (if they have one)
+ - `!scremoveentry <"division"> <"user">` - Removes `user`'s score from a field.
