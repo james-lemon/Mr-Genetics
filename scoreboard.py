@@ -31,7 +31,7 @@ class Scoreboard(commands.Cog):
         "Perfection is your first, last, AND middle name!",
         "Total ability UP!",
         "Showers are sexy! Take one today!",
-        "*Does a little jig*",
+        "\*Does a little jig\*",
         "Hell yeah, pizza time.",
         "I'm screenshotting this, thank you very much",
 
@@ -43,6 +43,7 @@ class Scoreboard(commands.Cog):
 
         self.scfield_emote = None
         self.scdiv_emote = None
+        self.scdiv_division = {}
         self.scsubmit_field = {}
         self.scverify_field = {}
         self.scrm_field = {}
@@ -142,7 +143,7 @@ class Scoreboard(commands.Cog):
                 if user != ctx.author or reaction.message.id != msg.id:  # First: Only accept reactions from the command sender on the message we just sent
                     return False
 
-                if str(reaction.emoji) in self.sc_config.get_divisions().keys():  # Make sure the emoji isn't in use in another field
+                if str(reaction.emoji) in self.sc_config.get_division_emotes().keys():  # Make sure the emoji isn't in use in another division
                     print("Reaction check failed: Duplicate emoji")
                     return False
 
@@ -162,12 +163,27 @@ class Scoreboard(commands.Cog):
                 embed.color = 0xDB2323
                 await msg.edit(embed=embed)
             else:
-                if self.sc_config.div_new(name, desc):
+                if self.sc_config.div_new(name, desc, self.scdiv_emote):
                     await msg.add_reaction('👍')
                     return
                 else:
                     await ctx.send(embed=utils.format_embed("Error creating division \"" + name + "\".", True))
                     return
+
+
+    # Sets a division's description
+    @commands.command()
+    async def scdivdescription(self, ctx, name, *, description):
+        if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and utils.authorize_admin(ctx.guild, ctx.author):  # Prevent this from running outside of a guild or by non-admins:
+            if not self.sc_config.is_scoreboard_loaded():
+                await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
+                return
+            if self.sc_config.div_desc(name, description):
+                await ctx.send(embed=utils.format_embed("Set division \"" + name + "\"'s description", False))
+                return
+            else:
+                await ctx.send(embed=utils.format_embed("Error removing division - division \"" + name + "\" doesn't exist!", True))
+                return
 
 
     # Removes a scoreboard division
@@ -305,10 +321,22 @@ class Scoreboard(commands.Cog):
                 await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded!", True))
                 return
 
-            division = "EZ"  # DEBUG: Hard-code a division name, here, until we can grab a player's real division
+            #division = "EZ"  # DEBUG: Hard-code a division name, here, until we can grab a player's real division
+            division = self.sc_config.get_player_division(ctx.author.id)
+            print("Player " + ctx.author.display_name + "(id: " + str(ctx.author.id) + ") submitting unverified score " + str(score))
+            if division is None:  # Player hasn't joined a division yet, prompt them to join
+                print("Division check returned None, prompting player for division")
+                res = await self.division(ctx)
+                if res is False:  # Didn't choose a division lol, bail here
+                    return
+                division = self.sc_config.get_player_division(ctx.author.id)
+            else:
+                print("Division check passed, player division \"" + division + "\"")
+
             div = self.sc_config.get_division(division)
             if div is None:
-                await ctx.send(embed=utils.format_embed("Error: Invalid divsion name \"" + division + "\""))
+                print("Division invalid!")
+                await ctx.send(embed=utils.format_embed("Error: The division you joined (\"" + division + "\") is invalid... somehow. Please contact an admin :("))
                 return
 
             # Our logic here changes if there's only one field on the scoreboard
@@ -364,10 +392,69 @@ class Scoreboard(commands.Cog):
                 await ctx.send(embed=embedd)
 
 
+    # Joins a player to a division, returns if the player is currently in a division or not
+    @commands.command()
+    async def division(self, ctx):
+        divisions = self.sc_config.get_division_names()  # Get a list of divisions and divisions emotes/descriptions
+        divisions_emotes = self.sc_config.get_division_emotes()
+
+        cur_div = self.sc_config.get_player_division(ctx.author.id)
+        if cur_div is not None:
+            await ctx.send(embed=utils.format_embed("You're in division \"" + cur_div + "\"!\n\n (At this time, you cannot switch divisions)", False))
+            return True
+
+        # If there's only one divisions, we want to auto-join that one!
+        if len(divisions) == 1:
+            selected_div = list(divisions.keys())[0]
+        else:
+            selected_div = None
+
+        # Helper function to validate reaction-based input for the below prompt
+        def div_reaction_check(reaction, user):
+            if user == ctx.author and reaction.message.id == msg.id and str(reaction.emoji) in divisions_emotes.keys():
+                self.scdiv_division[user.id] = divisions_emotes[str(reaction.emoji)]
+                return True
+            return False
+
+        try:
+            if selected_div is None:  # Didn't auto-pick a division? Prompt for one
+                emb = discord.Embed(title="Pick a division to join:", color=0x4EDB23)
+                desc = ""
+                for div_emote, div_name in divisions_emotes.items():  # List the divisions to join, their emotes, and descriptions
+                    desc += div_emote + " **" + div_name + ":** " + divisions[div_name] + "\n"
+
+                emb.description = desc
+                msg = await ctx.send(embed=emb)
+
+                for emote in divisions_emotes.keys():  # React to the message with the division emotes we can join
+                    await msg.add_reaction(emote)
+
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60, check=div_reaction_check)  # And wait for the user to react to pick a division
+
+        except asyncio.TimeoutError:  # User didn't react in time
+            desc += "\n\n**Waiting for a reaction timed out - run this command again**"
+            emb.description = desc
+            emb.color = 0xDB2323
+            await msg.edit(embed=emb)
+            return False
+
+        else:  # On reaction (or auto-selected division), set the player's division
+            if selected_div is None:  # Didn't auto-select
+                selected_div = self.scdiv_division[ctx.author.id]
+                print("Reaction-based division set: " + selected_div)
+            print("Attempting to set user division: " + ctx.author.display_name + ", " + selected_div)
+            res = self.sc_config.set_player_division(ctx.author.id, selected_div)
+            if res:
+                await ctx.send(embed=utils.format_embed("You've joined division " + selected_div + "!", False))
+                return True
+            else:
+                await ctx.send(embed=utils.format_embed("Unable to join division " + selected_div + " - Please contact an admin", True))
+                return False
+
 
     #  Sets a user's verified score entry (to a specified score if specified, else to their unverified score if they have one)
     @commands.command()
-    async def verify(self, division, ctx, member: discord.Member, score=-1):
+    async def verify(self, ctx, division, member: discord.Member, score=-1):
         if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and utils.authorize_admin(ctx.guild, ctx.author):  # Prevent this from running outside of a guild or by non-admins:
             if not self.sc_config.is_scoreboard_loaded():
                 await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
@@ -375,7 +462,7 @@ class Scoreboard(commands.Cog):
 
             div = self.sc_config.get_division(division)
             if div is None:
-                await ctx.send(embed=utils.format_embed("Error: Invalid divsion name \"" + division + "\""))
+                await ctx.send(embed=utils.format_embed("Error: Invalid divsion name \"" + division + "\"", True))
                 return
 
             fields = self.sc_config.get_fields_emoji(div)
@@ -422,7 +509,7 @@ class Scoreboard(commands.Cog):
 
                 #try:
                 if int(score) == -1:  # Score = -1 means score wasn't specified as an argument, so verify the user's unverified score
-                    existing_scores = self.sc_config.get_entry(ver_field, member.id)
+                    existing_scores = self.sc_config.get_entry(div, ver_field, member.id)
                     print("Attempting verify of user " + member.display_name + "'s unverified score")
                     print(existing_scores)
                     if existing_scores is False or existing_scores[0] == -1:  # Plot twist: The user doesn't have an unverified score to verify
@@ -439,13 +526,13 @@ class Scoreboard(commands.Cog):
                 self.sc_config.update_entry(div, ver_field, member.id, score, True)
 
                 await self.generate_scoreboard_message(ctx, False)  # Update the scoreboard
-                embedd = discord.Embed(title="Set user " + member.display_name + "'s verified score", description=ver_field + ": " + str(score), colour=0x16E200)
+                embedd = discord.Embed(title="Set user " + member.display_name + "'s verified score", description="Division: " + division + "\nField " + ver_field + ": " + str(score), colour=0x16E200)
                 await ctx.send(embed=embedd)
 
 
     # Removes a score entry from the scoreboard
     @commands.command()
-    async def scremoveentry(self, division, ctx, member: discord.Member):
+    async def scremoveentry(self, ctx, division, member: discord.Member):
         if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and utils.authorize_admin(ctx.guild, ctx.author):  # Prevent this from running outside of a guild or by non-admins:
             if not self.sc_config.is_scoreboard_loaded():
                 await ctx.send(embed=utils.format_embed("Error: No scoreboard is currently loaded! Load one with !scload", True))
@@ -537,16 +624,17 @@ class Scoreboard(commands.Cog):
 
         # Next, generate the message embed
         embed = discord.Embed(title="👑   Event Leaderboard  👑",  # Title: Leaderboard
-                              description=self.sc_config.get_desc() + "\n.",  # Description
                               color=0xFF7D00)
         embed.set_author(name=self.sc_config.get_disp_name(),
                          url="https://www.youtube.com/watch?v=PGNiXGX2nLU")  # Author field: Event name, link
         embed.set_footer(text="Type !submit to submit a score  -  \"⚠\" scores are unverified")  # Footer: Brief instructions
 
+        desc_text = self.sc_config.get_desc() + "\n\n"
         for div_emoji, div in self.sc_config.get_divisions().items():  # First get a list of divisions to display...
-            print("Div " + div_emoji)
+            desc_text += div_emoji + " - Division " + div.getAttribute("name") + "\n"
+            # print("Div " + div_emoji)
             for emoji, field in self.sc_config.get_fields_emoji(div).items():  # First (but not first) get a list of fields to display...
-                print("Field" + emoji)
+                # print("Field" + emoji)
                 fieldtext = ""
                 entries = self.sc_config.get_entries(div, field, ctx.guild)  # ...then a list of entries for that field
                 entry_members = sorted(entries.items(), key=lambda i: i[1][0], reverse=True)  # Get a list of users, sorted by their entry's highest score
@@ -562,8 +650,10 @@ class Scoreboard(commands.Cog):
 
                 if fieldtext == "":
                     fieldtext = "No scores yet!"
-                embed.add_field(name=emoji + "  " + field, value=fieldtext)
+                embed.add_field(name=div_emoji + ": " + emoji + "  " + field, value=fieldtext)
 
+        desc_text += "\n."
+        embed.description = desc_text
         # Updating an old message
         if not generate_new:
             try:

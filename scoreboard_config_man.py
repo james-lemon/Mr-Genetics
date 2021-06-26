@@ -19,12 +19,12 @@ import codecs
 # <scoreboard>
 #   <display_name>name</display_name>
 #   <description>event description</description> (Probably gonna get deprecated)
-#   <activeplayers><player name="name" division="div" /></activeplayers>
+#   <activeplayers><player id="id" division="div" /></activeplayers>
 #   <divisions>
 #      <division name="", desc="", emote="">
 #           <scoreboard_message channel="" message=""/>
 #          <field name="Field name" type="Field type" emote="">
-#              <entry verified_value=score, unverified_value=score2>Player name</role>
+#              <entry verified_value=score, unverified_value=score2>Player id</role>
 #              <entry>...
 #          </field>
 #           <field...>
@@ -205,12 +205,40 @@ class ScoreboardConfig:
             for div_elem in div_elems:
                 if div_elem.hasAttribute("name") and div_elem.hasAttribute("emote"):
                     ret[div_elem.getAttribute("emote")] = div_elem
+                    #print(div_elem.getAttribute("emote") + "," + div_elem.getAttribute("name"))
             return ret
         return None
 
 
+    # Returns a list of division names and descriptions
+    def get_division_names(self):
+        if self.sc_config is not None:
+            div_elems = self.get_divisions()
+            ret = {}
+            for div_elem in div_elems.values():
+                if div_elem.hasAttribute("description"):
+                    ret[div_elem.getAttribute("name")] = div_elem.getAttribute("description")
+                else:
+                    ret[div_elem.getAttribute("name")] = "*No description available*"
+            return ret
+        return None
+
+
+    # Returns a list of division emojis and names
+    def get_division_emotes(self):
+        if self.sc_config is not None:
+            div_elems = self.get_divisions()
+            ret = {}
+            for div_elem in div_elems.values():
+                if div_elem.hasAttribute("name") and div_elem.hasAttribute("emote"):
+                    ret[div_elem.getAttribute("emote")] = div_elem.getAttribute("name")
+            return ret
+
+        return None
+
+
     # Creates a new scoreboard division
-    def div_new(self, name, desc=""):
+    def div_new(self, name, desc, emote):
         if self.sc_config is not None:  # Make sure we have a config loaded
             if self.get_division(name) is not None:  # Does a division with this name already exist?
                 print("Error creating division \"" + name + "\" - a division with this name already exists!")
@@ -221,7 +249,7 @@ class ScoreboardConfig:
                 div = self.sc_dom.createElement("division")  # ...and add a new division element to it
                 div.setAttribute("name", name)
                 div.setAttribute("desc", desc)
-                div.setAttribute("emote", "🤟")
+                div.setAttribute("emote", emote)
                 divs_elems[0].appendChild(div)
                 print("Created scoreboard division \"" + name + "\".")
                 self.save_sc_config()
@@ -249,6 +277,63 @@ class ScoreboardConfig:
             else:  # Can't delete a division that doesn't exist
                 print("Error deleting division \"" + name + "\" - division doesn't exist!")
                 return False
+
+
+    # Sets a division's description
+    def div_desc(self, name, description):
+        if self.sc_config is not None:
+            div = self.get_division(name)
+            if div is not None:  # Does the division we want to edit exist?
+                div.setAttribute("description", description)
+                self.save_sc_config()
+                return True
+
+            else:  # Can't delete a division that doesn't exist
+                print("Error finding division \"" + name + "\" - division doesn't exist!")
+                return False
+
+
+    # Given a player's user id', gets a division
+    def get_player_division(self, id):
+        if self.sc_config is not None:
+            id = str(id)
+            aplr_elems = self.sc_config.getElementsByTagName("activeplayers")
+            if aplr_elems is not None and len(aplr_elems) > 0:
+                plr_elems = aplr_elems[0].getElementsByTagName("player")
+                for plr_elem in plr_elems:
+                    if plr_elem.hasAttribute("id") and plr_elem.getAttribute("id") == id and plr_elem.hasAttribute("division"):
+                        return plr_elem.getAttribute("division")
+        return None
+
+
+    # Sets a player's division, given a player and a division
+    def set_player_division(self, id, division):
+        if self.sc_config is not None:
+            id = str(id)
+            plr_elems = self.sc_config.getElementsByTagName("player")
+            for plr_elem in plr_elems:
+                if plr_elem.hasAttribute("id") and plr_elem.getAttribute("id") == id:
+                    plr_elem.setAttribute("division", division)
+                    self.save_sc_config()
+                    return True
+
+            # Couldn't find an existing player entry, make a new one
+            plr_elem = self.sc_dom.createElement("player")
+            plr_elem.setAttribute("id", id)
+            plr_elem.setAttribute("division", division)
+            aplr_elems = self.sc_config.getElementsByTagName("activeplayers")
+            if aplr_elems is not None and len(aplr_elems) > 0:
+                aplr_elems[0].appendChild(plr_elem)
+                self.save_sc_config()
+                return True
+            else:
+                aplr_elem = self.sc_dom.createElement("activeplayers")
+                self.sc_config.appendChild(aplr_elem)
+                aplr_elem.appendChild(plr_elem)
+                self.save_sc_config()
+                return True
+
+        return False
 
 
     # Gets the channel/message ID of the scoreboard message

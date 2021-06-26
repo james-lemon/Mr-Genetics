@@ -24,6 +24,7 @@ Each division has a number of **fields** for individual songs, games, etc. Playe
 ### Division commands
 
 - `!scnewdiv <"name"> (description)` - Creates a new scoreboard division
+- `!scdivdescription <"name"> <description>` - Edits a division's description (shown when prompting players to join a division)
 - `!scremovediv <"name">` - Removes an existing scoreboard division
 
 ---
@@ -39,7 +40,7 @@ Scoreboards are made up of configurable fields - these are individual goals/chal
 
 ### Score commands
 
-TL;DR: Users submit scores with `!submit`, admins verify them with `!verify`
+TL;DR: Users submit scores with `!submit` (optionally joining a division with `!division`, admins verify them with `!verify`
 
 User-submitted scores are marked as unverified - they show up on the leaderboard with a ⚠ next to them.
 
@@ -47,6 +48,7 @@ Admins can verify a user-submitted score by running `!verify`.
 
 Running any of these commands will (in the future) prompt the user to react to an emote to choose which field to submit their score under.
 
+ - `!division` - Prompts a player to choose a division if they haven't joined one, or shows their current divisions if they have (can be run by non-admins). Changing divisions once joined is currently unsupported.
  - `!submit (score)` - Submits an unverified score for your username (can be run by non-admins)
  - `!verify <"division"> <"user"> (score)` - If `score` is specified, `user`'s score will be set to that score. Otherwise, this command will verify their unverified score (if they have one)
  - `!scremoveentry <"division"> <"user">` - Removes `user`'s score from a field.
