@@ -129,7 +129,7 @@ async def on_command_error(ctx, error):
 async def change_status():
     while True:
         await bot.change_presence(activity=discord.Game(playing_messages.get_status()))
-        await asyncio.sleep(21600)  # 60 seconds * 60 minutes * 6 hours
+        await asyncio.sleep(60 * 60 * 2)  # 60 seconds * 60 minutes * 2 hours
 
 # Now to actually run the bot:
 secret = open("secret-token.txt", "r").read(59)  # Load our spooper secret token from file

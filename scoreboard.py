@@ -481,7 +481,7 @@ class Scoreboard(commands.Cog):
             try:
                 if ver_field is None:  # Still need to prompt the user to choose a field to submit to, do it
                     embed = discord.Embed(title="Verifying score:", color=0x4EDB23)
-                    msg_text = "\n" + ctx.author.display_name
+                    msg_text = "\n" + member.display_name
                     if int(score) == -1:
                         msg_text += "'s unverified score"
                     else:
@@ -626,7 +626,7 @@ class Scoreboard(commands.Cog):
         embed = discord.Embed(title="👑   Event Leaderboard  👑",  # Title: Leaderboard
                               color=0xFF7D00)
         embed.set_author(name=self.sc_config.get_disp_name(),
-                         url="https://www.youtube.com/watch?v=PGNiXGX2nLU")  # Author field: Event name, link
+                         url="https://www.youtube.com/watch?v=ZyhrYis509A")  # Author field: Event name, link
         embed.set_footer(text="Type !submit to submit a score  -  \"⚠\" scores are unverified")  # Footer: Brief instructions
 
         desc_text = self.sc_config.get_desc() + "\n\n"

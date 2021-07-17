@@ -14,16 +14,7 @@ import utils
 class RoleList(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.rolelist_messages = {}  # A list of rolelist messages to track, stored as {(channel id, message id), category}
-        for category, ids in config_man.categories.items():  # Let's initialize that list with the values stored in each category in the config
-            id_list = ids.split(';')
-            if id_list[0] != '-1':  # Only add valid category messages to the rolelist messages list: -1 means a category doesn't have a rolelist message
-                self.rolelist_messages[(int(id_list[0]), int(id_list[1]))] = category
-
-        for category, ids in config_man.categoriesAlt.items():  # Do the same for the alt rolelist messages
-            id_list = ids.split(';')
-            if id_list[0] != '-1':
-                self.rolelist_messages[(int(id_list[0]), int(id_list[1]))] = category
+        self.update_rolelist_messages()
     
         # Temporary tracking variables for the addrole command - Helps persist some data between the command being run and the emoji reaction to confirm it
         self.addrole_message = [0, 0]
@@ -42,6 +33,19 @@ class RoleList(commands.Cog):
         # ...and the "setadminrole" command...
         self.setadmin_message = [0, 0]
         self.setadmin_role = ""
+
+
+    def update_rolelist_messages(self):
+        self.rolelist_messages = {}  # A list of rolelist messages to track, stored as {(channel id, message id), category}
+        for category, ids in config_man.categories.items():  # Let's initialize that list with the values stored in each category in the config
+            id_list = ids.split(';')
+            if id_list[0] != '-1':  # Only add valid category messages to the rolelist messages list: -1 means a category doesn't have a rolelist message
+                self.rolelist_messages[(int(id_list[0]), int(id_list[1]))] = category
+
+        for category, ids in config_man.categoriesAlt.items():  # Do the same for the alt rolelist messages
+            id_list = ids.split(';')
+            if id_list[0] != '-1':
+                self.rolelist_messages[(int(id_list[0]), int(id_list[1]))] = category
 
 
     # Adds a role to the config
@@ -214,7 +218,10 @@ class RoleList(commands.Cog):
                     # print(message)
                     try:
                         msg = await self.bot.get_channel(message[0]).fetch_message(message[1])
-                        await msg.delete()
+                        # rolelist_messages may contain messages sent by non-bot users (as rolelist alt messages)
+                        # These messages should be KEPT, only delete BOT-SENT messages!
+                        if msg.author.id is self.bot.user.id:
+                            await msg.delete()
                     except discord.errors.NotFound:
                         print("Received 404 trying to delete message with ID " + str(
                             message[1]) + ", was it already deleted?")
@@ -257,7 +264,7 @@ class RoleList(commands.Cog):
                     msg = await ctx.send(embed=embed)
                     print("Sent role new list message for \"" + category + "\": ", msg.id)
 
-                self.rolelist_messages[(msg.channel.id, msg.id)] = category  # Store this message's channel/message IDs for later - We'll use them to track these messages for reactions
+                #self.rolelist_messages[(msg.channel.id, msg.id)] = category  # Store this message's channel/message IDs for later - We'll use them to track these messages for reactions
                 config_man.set_category_message(category, str(msg.channel.id), str(msg.id))  # Also save these values to the config as well
 
                 cur_emoji_list = []
@@ -294,6 +301,7 @@ class RoleList(commands.Cog):
 
                 await asyncio.sleep(1)  # *bows down to discord api*
 
+            self.update_rolelist_messages()
             config_man.save_config()  # We've updated some entries in the config for message IDs to listen for reactions on, don't forget to save these!
             return
 
@@ -345,13 +353,33 @@ class RoleList(commands.Cog):
                     await ctx.send(embed=utils.format_embed("Error getting the specified message ID!\nMake sure you use `Shift + Hover Message -> Copy ID` to get the ID.", True))
                     return
 
-                # The message should exist at this point, add a reaction to it and set it as the category's alt message
+                # Try to grab the emote from this role (to react with later + as a simple check to ensure this role is defined in the category)
+                try:
+                    emotes = config_man.get_roles_emoji(category)
+                    if emotes is not False:
+                        emote = emotes[str(role.id)][0]
+                    else:
+                        print("Category " + category + " not found for alt rolelist!")
+                        await ctx.send(embed=utils.format_embed("Error: Category " + category + " not found!", True))
+                        return
+                except KeyError:  # Couldn't find the emote :(
+                    emote = None
+
+                if emote is None:
+                    print("Error: Role " + role.name + "'s emote not found!")
+                    await ctx.send(embed=utils.format_embed("Error getting role " + role.name + "'s emote - is this role defined in the rolelist category?", True))
+                    return
+
+                # The message should exist at this point, add a reaction to it
                 duck_emote = str(get(ctx.guild.emojis, name="discoduck"))
                 if duck_emote == "None":
                     duck_emote = "🦆"
                 await message.add_reaction(duck_emote)
+                await message.add_reaction(emote)  # Also react with this role's emote as well
 
+                # Set this category's alt message and update the rolelist message list
                 ret = config_man.set_category_alt_message(category, msg[0], msg[1], role)
+                self.update_rolelist_messages()
                 await ctx.send(embed=utils.format_embed(ret, False))
 
 
@@ -406,9 +434,9 @@ class RoleList(commands.Cog):
                         if await RoleList.process_rolelist_reaction(self, payload, guild, category, roles, reaction_added, member):  # Try checking if the reacted emote belongs to a role, if it does update the user and return
                             return
 
-                print("lol")
+                #print("lol")
                 for category, category_message in config_man.categoriesAlt.items():  # Finally, see if the message we reacted to was in our list of ALT category messages
-                    print(category + ", " + category_message)
+                    #print(category + ", " + category_message)
                     category_ids = category_message.split(';')
                     if payload.channel_id == int(category_ids[0]) and payload.message_id == int(category_ids[1]):  # Did we find the category?
                         print("Found alt message")
