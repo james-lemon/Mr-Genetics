@@ -9,6 +9,7 @@
 import asyncio
 import discord
 from discord.ext import commands
+from discord import app_commands
 from discord.utils import get
 
 import config_man
@@ -22,19 +23,21 @@ print('Initalizing Mr. Genetics, using discordpy version ' + discord.__version__
 
 intents = discord.Intents(guilds=True, members=True, emojis=True, messages=True, guild_reactions=True)  # Set our intents - Subscribes to certain types of events from discord
 
-bot = commands.Bot(command_prefix='!', case_insensitive=True, intents=intents)
+bot = commands.Bot(command_prefix=commands.when_mentioned, case_insensitive=True, intents=intents)
 
 bot.remove_command('help')  # Remove the default help command, imma make my own lel
 
 rolelist = RoleList(bot)
-bot.add_cog(rolelist)
-bot.add_cog(Scoreboard(bot))
 
 @bot.event
 async def on_ready():
-    #global admin_role
+    await bot.add_cog(rolelist)
+    await bot.add_cog(Scoreboard(bot))
     print('Bot logged on as user: ', bot.user)
     bot.loop.create_task(change_status())  # Also start the "change status every so often" task, too
+    #print(bot.tree.get_commands())
+    #lol = await bot.tree.sync(guild=discord.Object(id=)) # Debug: Sync slash commands to a specific guild (MUCH faster)
+    #print('Slash command sync okay')
 
 
 # Sets the admin role in the config
@@ -53,6 +56,7 @@ async def setadminrole(ctx, role: discord.Role):
         else:
             await ctx.send(embed=utils.format_embed("Invalid role given!", True))  # This might not even get reached, on_command_error() might intercept things first
 
+
 # Sends an introduction message, da-don!
 @bot.command()
 async def introduction(ctx):
@@ -60,30 +64,44 @@ async def introduction(ctx):
         await ctx.send("*Musical quack*, da-don 🦆")
 
 
-@bot.event
-async def on_message(message):
-    if message.author.id != bot.user.id and bot.user in message.mentions:  # On pings, react with duck
-        duck_emote = str(get(message.guild.emojis, name="discoduck"))
-        if duck_emote == "None":
-            duck_emote = "🦆"
-        print(duck_emote)
-        await message.add_reaction(duck_emote)
-    else:
-        await bot.process_commands(message)
+# Sync slash commands to the current guild
+@bot.command()
+async def synccommands(ctx, syncglobal=False):
+    if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member) and utils.authorize_admin(ctx.guild, ctx.author):  # First: Authorize an admin is running this command
+        # Slash commands must be synced in order to appear in autocomplete/etc. Maybe to even be used at all? W/e, needs to happen as a one-time setup thing
+        # They can either be synced globally (takes up to an hour, ratelimited in some instances) or to a specific guild
+        # This bot is intended for use in only ONE server, so we'll take the latter route here
+        try:
+            if syncglobal:
+                commandlist = await bot.tree.sync()
+                await ctx.send(embed=utils.format_embed('Successfully synced ' + str(len(commandlist)) + ' slash commands globally', False))
+
+            else:
+                bot.tree.copy_global_to(guild=discord.Object(id=ctx.guild.id))
+                commandlist = await bot.tree.sync(guild=discord.Object(id=ctx.guild.id))
+                await ctx.send(embed=utils.format_embed('Successfully synced ' + str(len(commandlist)) + ' slash commands to this guild', False))
+
+        except discord.HTTPException:
+            await ctx.send(embed=utils.format_embed('Slash command sync has FAILED!', True))
+            return
+        except discord.Forbidden:
+            await ctx.send(embed=utils.format_embed('Slash command sync failed - check that slash commands are allowed', True))
+            return
 
 
 # A help command that DMs the sender with command info
-@bot.command()
-async def help(ctx):
-    if not isinstance(ctx.channel, discord.DMChannel) and isinstance(ctx.author, discord.Member):  # First: Authorize an admin is running this command
+@bot.tree.command(description='Receive a list of available commands')
+async def help(interaction: discord.Interaction):
+    if not isinstance(interaction.channel, discord.DMChannel) and isinstance(interaction.user, discord.Member):  # First: Authorize an admin is running this command
         embed = discord.Embed(title="Command Help", colour=0xFF7D00)  # Create an embed, set it's title and color
-        if utils.authorize_admin(ctx.guild, ctx.author):
-            embed.description = "\n`help:` Get sent this list\n\n" \
+        if utils.authorize_admin(interaction.guild, interaction.user):
+            embed.description = "\n`/help:` Get sent this list\n\n" \
+                            "`synccommands (global):` Syncs this bot's slash commands to the current guild (or globally if \"True\" is specified). Required one-time setup.\n\n" \
                             "`addrole \"Category\" \"Role\" Description:`  Adds an assignable role to the role list\n\n" \
                             "`adddisprole \"Category\" \"Role\" Description:`  Adds a non-assignable role to the role list\n\n" \
                             "`editrole \"Category\" \"Role\" Description:`  Removes and re-adds a role to the role list\n\n" \
                             "`removerole \"Category\" \"Role\":`  Removes a role from the role list\n\n" \
-                            "`rolelist:`  Sends/updates the role list messages to the current channel\n\n" \
+                            "`rolelist:`  Updates all active rolelist messages. Sends new list messages to the current channel if needed.\n\n" \
                             "`newrolelist:`  Deletes the old role list and sends a new one to the current channel\n\n" \
                             "`setadminrole \"Role\":`  Sets a role as this bot's \"admin\" role\n\n" \
                             "`sortcategory \"Category\":`  Sorts the roles in a category (alphabetical order)\n\n" \
@@ -100,13 +118,13 @@ async def help(ctx):
                             "`verify user score:` Verifies user's score on the scoreboard (score is optional if the user provided a score)\n\n" \
                             "Note:  If an admin role is set, you'll need that role to run most commands!"
         else:
-            embed.description = "\n`!help:` Get sent this list\n\n" \
-                            "`!submit <score>:` Submits a score to the leaderboard (specifying score is optional, must be verified by an admin)\n\n\n" \
+            embed.description = "\n`/help:` Get sent this list\n\n" \
+                            "`@The Duck submit <score>:` Submits a score to the leaderboard (specifying score is optional, must be verified by an admin)\n\n\n" \
                             "...yeah there's not much else non-admins can do :/\n\n" \
                             "I guess you can ping me if you get super bored lol"
 
-        await ctx.author.send(embed=embed)
-        await ctx.send(embed=utils.format_embed("DM'd ya fam 😉", False))
+        await interaction.user.send(embed=embed)
+        await interaction.response.send_message(embed=utils.format_embed("DM'd ya fam 😉", False))
 
 
 
@@ -134,6 +152,7 @@ async def change_status():
 # Now to actually run the bot:
 secret = open("secret-token.txt", "r").read(59)  # Load our spooper secret token from file
 if len(secret) == 59:  # Basic length check for invalid secrets (are secrets always 59 characters lnog???? I DUNNO BRUH!!!1!
+    #bot.tree.copy_global_to(guild=discord.Object(id=)) # Debug: Copy slash commands in the global scope to a specific guild so it syncs faster
     bot.run(secret)
 else:
     print("Invalid secret? Place this bot's access token in secret-token.txt to run!")
