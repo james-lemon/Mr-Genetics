@@ -69,7 +69,7 @@ def get_category_descriptions():
         if category.hasAttribute("name"):  # Check if this category has a name
             if category.hasAttribute("description"):  # Now check if it has a description
                 desc = category.getAttribute("description")  # Categories with blank descriptions should use placeholder text, otherwise just return the description
-                ret[category.getAttribute("name")] = desc if desc is not "" else "React with these emotes to get roles!"
+                ret[category.getAttribute("name")] = desc if desc != "" else "React with these emotes to get roles!"
             else:  # No description attribute in the config? Also use some placeholder text
                 ret[category.getAttribute("name")] = "React with these emotes to get roles!"
     return ret
@@ -338,6 +338,68 @@ def set_default_scoreboard(scrbrd):
         for child in scoreboard.childNodes:
             scoreboard.removeChild(child)
     scoreboard.appendChild(dom.createTextNode(scrbrd))
+
+    save_config()
+    return True
+
+
+
+# Gets the duckboard channel
+def get_duckboard_channel():
+    elements = config.getElementsByTagName("duckboard")
+    if len(elements) >= 1:
+        duckboard = elements[0].firstChild
+        if duckboard is not None and duckboard.nodeValue is not None:
+            return duckboard.nodeValue
+    return None
+
+
+
+# Sets the duckboard channel
+def set_duckboard_channel(id):
+    duckboard_elements = config.getElementsByTagName("duckboard")
+    duckboard = None
+    if len(duckboard_elements) == 0:  # First: Create the duckboard tag if it doesn't exist
+        duckboard = dom.createElement("duckboard")
+        config.appendChild(duckboard)
+    else:
+        duckboard = duckboard_elements[0]
+
+    if duckboard.hasChildNodes():  # If there's old children nodes, remove them all
+        for child in duckboard.childNodes:
+            duckboard.removeChild(child)
+    duckboard.appendChild(dom.createTextNode(str(id)))
+
+    save_config()
+    return True
+
+
+
+# Gets the duckboard reaction count
+def get_duckboard_count():
+    elements = config.getElementsByTagName("duckboardcount")
+    if len(elements) >= 1:
+        duckboardc = elements[0].firstChild
+        if duckboardc is not None and duckboardc.nodeValue is not None:
+            return duckboardc.nodeValue
+    return None
+
+
+
+# Sets the duckboard reaction count
+def set_duckboard_count(count):
+    duckboardc_elements = config.getElementsByTagName("duckboardcount")
+    duckboardc = None
+    if len(duckboardc_elements) == 0:  # First: Create the duckboard tag if it doesn't exist
+        duckboardc = dom.createElement("duckboardcount")
+        config.appendChild(duckboardc)
+    else:
+        duckboardc = duckboardc_elements[0]
+
+    if duckboardc.hasChildNodes():  # If there's old children nodes, remove them all
+        for child in duckboardc.childNodes:
+            duckboardc.removeChild(child)
+    duckboardc.appendChild(dom.createTextNode(str(count)))
 
     save_config()
     return True

@@ -15,24 +15,25 @@ from discord.utils import get
 import config_man
 import utils
 from rolelist import RoleList
-from scoreboard import Scoreboard
+from duckboard import DuckBoard
 import playing_messages
 
 
 print('Initalizing Mr. Genetics, using discordpy version ' + discord.__version__)
 
-intents = discord.Intents(guilds=True, members=True, emojis=True, messages=True, guild_reactions=True)  # Set our intents - Subscribes to certain types of events from discord
+intents = discord.Intents(guilds=True, members=True, emojis=True, messages=True, message_content=True, guild_reactions=True)  # Set our intents - Subscribes to certain types of events from discord
 
 bot = commands.Bot(command_prefix=commands.when_mentioned, case_insensitive=True, intents=intents)
 
 bot.remove_command('help')  # Remove the default help command, imma make my own lel
 
 rolelist = RoleList(bot)
+duckboard = DuckBoard(bot)
 
 @bot.event
 async def on_ready():
     await bot.add_cog(rolelist)
-    await bot.add_cog(Scoreboard(bot))
+    await bot.add_cog(duckboard)
     print('Bot logged on as user: ', bot.user)
     bot.loop.create_task(change_status())  # Also start the "change status every so often" task, too
     #print(bot.tree.get_commands())
@@ -106,22 +107,14 @@ async def help(interaction: discord.Interaction):
                             "`setadminrole \"Role\":`  Sets a role as this bot's \"admin\" role\n\n" \
                             "`sortcategory \"Category\":`  Sorts the roles in a category (alphabetical order)\n\n" \
                             "`setcategorydescription \"Category\" Description:` Sets a category's description (optional)\n\n\n" \
-                            "`scnew \"Fileame\" Description:` Creates a new scoreboard\n\n" \
-                            "`scload \"Filename\":` Loads a saved scoreboard from file\n\n" \
-                            "`scunload:` Unloads the current scoreboard (disables score submissions)\n\n" \
-                            "`scoreboard:` Sends a new scoreboard message\n\n" \
-                            "`scdisplayname Name:` Sets a scoreboard's display name\n\n" \
-                            "`scdescription Desc:` Sets a scoreboard's description\n\n" \
-                            "`scfield \"name\" type:` Adds/updates a scoreboard field\n\n"\
-                            "`scremovefield \"name\":` Removes a scoreboard field\n\n" \
-                            "`submit score:` Submits a score to the scoreboard (adding a score is optional)\n\n" \
-                            "`verify user score:` Verifies user's score on the scoreboard (score is optional if the user provided a score)\n\n" \
+                            "`duckboard:` Sets this channel as the channel to repost starboard messages in\n\n" \
+                            "`duckboardcount Count:` Sets the number of reactions a message needs to be reposted\n\n" \
                             "Note:  If an admin role is set, you'll need that role to run most commands!"
         else:
             embed.description = "\n`/help:` Get sent this list\n\n" \
-                            "`@The Duck submit <score>:` Submits a score to the leaderboard (specifying score is optional, must be verified by an admin)\n\n\n" \
-                            "...yeah there's not much else non-admins can do :/\n\n" \
-                            "I guess you can ping me if you get super bored lol"
+                            "The Duck is 48productions' role management and duckboard bot.\n\n" \
+                            "With enough reactions, any message will be reposted in the duckboard channel for your viewing pleasure!\n\n\n\n\n" \
+                            "...that's it, that's all the help you get :)"
 
         await interaction.user.send(embed=embed)
         await interaction.response.send_message(embed=utils.format_embed("DM'd ya fam 😉", False))
