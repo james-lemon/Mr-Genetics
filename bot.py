@@ -16,6 +16,7 @@ import config_man
 import utils
 from rolelist import RoleList
 from duckboard import DuckBoard
+from colorlist import ColorList
 import playing_messages
 
 
@@ -29,11 +30,13 @@ bot.remove_command('help')  # Remove the default help command, imma make my own 
 
 rolelist = RoleList(bot)
 duckboard = DuckBoard(bot)
+colorlist = ColorList(bot)
 
 @bot.event
 async def on_ready():
     await bot.add_cog(rolelist)
-    await bot.add_cog(duckboard)
+    #await bot.add_cog(duckboard)
+    await bot.add_cog(colorlist)
     print('Bot logged on as user: ', bot.user)
     bot.loop.create_task(change_status())  # Also start the "change status every so often" task, too
     #print(bot.tree.get_commands())
@@ -93,7 +96,7 @@ async def synccommands(ctx, syncglobal=False):
 # A help command that DMs the sender with command info
 @bot.tree.command(description='Receive a list of available commands')
 async def help(interaction: discord.Interaction):
-    if not isinstance(interaction.channel, discord.DMChannel) and isinstance(interaction.user, discord.Member):  # First: Authorize an admin is running this command
+    if not isinstance(interaction.channel, discord.DMChannel) and isinstance(interaction.user, discord.Member):  # First: Make sure we're running this as a member in a guild
         embed = discord.Embed(title="Command Help", colour=0xFF7D00)  # Create an embed, set it's title and color
         if utils.authorize_admin(interaction.guild, interaction.user):
             embed.description = "\n`/help:` Get sent this list\n\n" \
@@ -111,10 +114,11 @@ async def help(interaction: discord.Interaction):
                             "`duckboardcount Count:` Sets the number of reactions a message needs to be reposted\n\n" \
                             "Note:  If an admin role is set, you'll need that role to run most commands!"
         else:
-            embed.description = "\n`/help:` Get sent this list\n\n" \
-                            "The Duck is 48productions' role management and duckboard bot.\n\n" \
-                            "With enough reactions, any message will be reposted in the duckboard channel for your viewing pleasure!\n\n\n\n\n" \
+            embed.description = "\nThe Duck is 48productions' role management and (soon to be) duckboard bot.\n\n" \
+                            "`/help:` Get sent this list\n\n" \
+                            "`/color:` Choose a name color\n\n\n\n\n" \
                             "...that's it, that's all the help you get :)"
+                            # "With enough reactions, any message will be reposted in the duckboard channel for your viewing pleasure!\n\n\n\n\n" \
 
         await interaction.user.send(embed=embed)
         await interaction.response.send_message(embed=utils.format_embed("DM'd ya fam 😉", False))

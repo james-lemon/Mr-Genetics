@@ -406,6 +406,48 @@ def set_duckboard_count(count):
 
 
 
+# Gets the list of color roles
+def get_color_roles():
+    global colorRoles
+    colorRoles = {}
+    colors = config.getElementsByTagName("colors")  # First grab the "colors" element where all the colors are stored
+    if len(colors) >= 1:
+        colorList = colors[0]
+        if colorList is not None:
+
+            configColors = colorList.getElementsByTagName("color")  # Grab all the colors we've defined
+            for color in configColors:
+                if color.hasAttribute("name") and color.hasAttribute("roleid"):  # Check if this color has a name and role assigned correctly
+                    colorRoles[color.getAttribute("roleid")] = category.getAttribute("name")
+                else:
+                    print("Config warning: Color in config is missing a name or role and won't be loaded!")
+
+
+
+# Sets the list of color roles
+def set_color_roles():
+    global colorRoles
+    colors = config.getElementsByTagName("colors")  # First grab the "colors" element where all the colors are stored
+    if len(colors) == 0:  # Create the colors element if it doesn't exist
+        colorList = dom.createElement("colors")
+        config.appendChild(colorList)
+    else:
+        colorList = colors[0]
+
+    if colorList.hasChildNodes():  # Nuke the color list and make a new one, easy modo >:)
+        for child in colorList.childNodes:
+            colorList.removeChild(child)
+
+    for color in colorRoles:
+        colore = dom.createElement("color")
+        colore.setAttribute("name", color[1])
+        colore.setAttribute("roleid", color[0])
+        colorList.appendChild()
+
+    save_config()
+
+
+
 # Let's open our config:
 try:
     dom = xml.dom.minidom.parse("config.xml")
