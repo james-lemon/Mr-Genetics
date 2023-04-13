@@ -96,9 +96,9 @@ async def synccommands(ctx, syncglobal=False):
 # A help command that DMs the sender with command info
 @bot.tree.command(description='Receive a list of available commands')
 async def help(interaction: discord.Interaction):
-    if not isinstance(interaction.channel, discord.DMChannel) and isinstance(interaction.user, discord.Member):  # First: Make sure we're running this as a member in a guild
+    if not isinstance(interaction.channel, discord.DMChannel) and isinstance(interaction.user, discord.Member):  # Only proceed if this isn't a DM and if the interaction is from a user
         embed = discord.Embed(title="Command Help", colour=0xFF7D00)  # Create an embed, set it's title and color
-        if utils.authorize_admin(interaction.guild, interaction.user):
+        if utils.authorize_admin(interaction.guild, interaction.user):  # Only show admin commands to admins
             embed.description = "\n`/help:` Get sent this list\n\n" \
                             "`synccommands (global):` Syncs this bot's slash commands to the current guild (or globally if \"True\" is specified). Required one-time setup.\n\n" \
                             "`addrole \"Category\" \"Role\" Description:`  Adds an assignable role to the role list\n\n" \
@@ -140,7 +140,7 @@ async def on_command_error(ctx, error):
 
 
 
-# Change the "playing" message every 6 hours (4 changes a day)
+# Change the "playing" message every 2 hours (12 changes a day)
 async def change_status():
     while True:
         await bot.change_presence(activity=discord.Game(playing_messages.get_status()))
