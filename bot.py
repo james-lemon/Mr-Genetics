@@ -136,7 +136,7 @@ async def on_command_error(ctx, error):
 
 
 
-# Change the "playing" message every 6 hours (4 changes a day)
+# Change the "playing" message every 2 hours (12 changes a day)
 async def change_status():
     while True:
         await bot.change_presence(activity=discord.Game(playing_messages.get_status()))
