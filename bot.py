@@ -93,9 +93,9 @@ async def synccommands(ctx, syncglobal=False):
 # A help command that DMs the sender with command info
 @bot.tree.command(description='Receive a list of available commands')
 async def help(interaction: discord.Interaction):
-    if not isinstance(interaction.channel, discord.DMChannel) and isinstance(interaction.user, discord.Member):  # First: Authorize an admin is running this command
+    if not isinstance(interaction.channel, discord.DMChannel) and isinstance(interaction.user, discord.Member):  # Only proceed if this isn't a DM and if the interaction is from a user
         embed = discord.Embed(title="Command Help", colour=0xFF7D00)  # Create an embed, set it's title and color
-        if utils.authorize_admin(interaction.guild, interaction.user):
+        if utils.authorize_admin(interaction.guild, interaction.user):  # Only show admin commands to admins
             embed.description = "\n`/help:` Get sent this list\n\n" \
                             "`synccommands (global):` Syncs this bot's slash commands to the current guild (or globally if \"True\" is specified). Required one-time setup.\n\n" \
                             "`addrole \"Category\" \"Role\" Description:`  Adds an assignable role to the role list\n\n" \
