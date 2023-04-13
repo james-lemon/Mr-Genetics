@@ -13,6 +13,7 @@ status_messages = (
     "Million Hits",
     "SSAMBA",
     "Samba de Amigo",
+    "Theatrhythm",
     
     "Quick & Crash",  # Then games...
     "Roblox",
